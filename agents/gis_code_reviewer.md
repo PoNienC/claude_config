@@ -1,5 +1,5 @@
 ---
-name: gis-code-reviewer
+name: gis_code_reviewer
 description: Reviews ArcPy, PyQGIS, PostGIS, or general spatial Python code for correctness, performance, and adherence to firm conventions. Read-only. Use when the user asks to review, audit, or critique spatial code.
 tools: Read, Grep, Glob, Bash(git diff:*)
 model: sonnet

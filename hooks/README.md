@@ -17,9 +17,9 @@ A script in this folder is dormant until `settings.json` lists it. See `settings
 
 | File | Event | Reusable? |
 |------|-------|-----------|
-| `session-start-context.sh` | `SessionStart` | **[GLOBAL]** — works in any repo with a `.git` directory |
-| `pre-tool-block-secrets.sh` | `PreToolUse` (Write/Edit) | **[GLOBAL]** — blocks obvious secret patterns |
-| `post-edit-format.sh` | `PostToolUse` (Write/Edit) | **[GLOBAL for Python]** — runs `black` + `ruff` if installed |
+| `session_start_context.sh` | `SessionStart` | **[GLOBAL]** — works in any repo with a `.git` directory |
+| `pre_tool_block_secrets.sh` | `PreToolUse` (Write/Edit) | **[GLOBAL]** — blocks obvious secret patterns |
+| `post_edit_format.sh` | `PostToolUse` (Write/Edit) | **[GLOBAL for Python]** — runs `black` + `ruff` if installed |
 
 ## Sharing across projects
 Promote any of these to `~/.claude/hooks/` and reference them with absolute paths in your global `~/.claude/settings.json`. Or bundle them in a plugin (see `../plugins/README.md`).

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# post-edit-format.sh
+# post_edit_format.sh
 # Fires after Write/Edit. Auto-formats Python files; logs SQL edits for review.
 # Reads tool event JSON from stdin and extracts the touched file path.
 

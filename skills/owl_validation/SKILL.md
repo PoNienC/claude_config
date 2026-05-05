@@ -1,5 +1,5 @@
 ---
-name: owl-validation
+name: owl_validation
 description: Validate PostGIS records against an OWL ontology using the hybrid schema-only pattern. Use when the user asks to validate data against ontology rules, run a reasoner, check axiom compliance, or build a PostGIS-to-OWL bridge. Do NOT use this skill to populate OWL with instance data — that pattern is forbidden by the project architecture.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: postgis-layer-creation
+name: postgis_layer_creation
 description: Create or import a new spatial layer into PostGIS using the firm's 12-theme taxonomy, 30-character field limit, and CRS validation rules. Use whenever the user asks to add, ingest, register, or create a new layer, table, feature class, or dataset in PostGIS or PostgreSQL.
 ---
 

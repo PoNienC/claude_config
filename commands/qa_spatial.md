@@ -3,7 +3,7 @@ description: Run spatial QA across the repo: layer naming, field length, CRS con
 allowed-tools: Read, Grep, Glob, Bash(psql:*)
 ---
 
-# /qa-spatial
+# /qa_spatial
 
 Audit all spatial layers and code in scope for compliance with firm conventions. Read-only.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# session-start-context.sh
+# session_start_context.sh
 # Fires once when a Claude Code session opens. Output is injected as system context.
 # Reusable across any GIS / data project.
 

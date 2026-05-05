@@ -1,5 +1,5 @@
 ---
-name: geosa-compliance-check
+name: geosa_compliance_check
 description: Pre-flight a GIS dataset against Saudi GEOSA / ADA Digital Data Standards before submission. Use when the user mentions GEOSA, SANSRS, ADA, UTM Zone 38, Saudi submission, Riyadh, Riyadh Development Authority, or asks to verify a deliverable for a Saudi client. Returns a checklist of failures, not a pass/fail verdict.
 ---
 

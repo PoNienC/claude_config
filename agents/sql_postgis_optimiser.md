@@ -1,5 +1,5 @@
 ---
-name: sql-postgis-optimiser
+name: sql_postgis_optimiser
 description: Diagnoses slow PostGIS queries and proposes fixes. Use when a query is slow, when the user provides EXPLAIN output, or when discussing index strategy for spatial tables. Reads the query, considers indexes and statistics, and returns a concrete plan.
 tools: Read, Grep, Glob, Bash(psql:*)
 model: sonnet

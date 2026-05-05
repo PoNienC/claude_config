@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-tool-block-secrets.sh
+# pre_tool_block_secrets.sh
 # Fires before Write/Edit. Blocks common secret patterns.
 # Reads the tool event JSON from stdin; exits non-zero with a message to block.
 

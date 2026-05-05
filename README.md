@@ -12,7 +12,7 @@
 ├── hooks/                  [MIXED]    Deterministic scripts wired in settings.json
 ├── skills/                 [PLUGIN]   Reusable workflows (auto-invoked by Claude)
 ├── agents/                 [PLUGIN]   Subagents with isolated context windows
-├── commands/               [PLUGIN]   Slash commands (e.g. /ship, /qa-spatial)
+├── commands/               [PLUGIN]   Slash commands (e.g. /ship, /qa_spatial)
 ├── rules/                  [PROJECT]  Path-scoped instructions (use globs:)
 └── plugins/                [META]     See plugins/README.md for how to share
 ```
