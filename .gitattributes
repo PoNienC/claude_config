@@ -1,0 +1,31 @@
+# ============================================================
+# .gitattributes for synced ~/.claude/ repo
+# Why this matters: Git on Windows likes to convert line endings
+# to CRLF on checkout. That breaks bash scripts (the shebang line
+# becomes "#!/usr/bin/env bash\r" and the kernel can't find the
+# interpreter, producing the classic "bad interpreter: ^M" error).
+# ============================================================
+
+# Default: let Git decide based on content
+* text=auto
+
+# Shell scripts: ALWAYS LF, never CRLF (executable on macOS, WSL, Git Bash)
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# Markdown: LF (works fine on both, avoids noisy diffs across machines)
+*.md   text eol=lf
+
+# JSON / YAML / TOML config: LF
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.toml text eol=lf
+
+# Python (in case any helpers end up here): LF
+*.py   text eol=lf
+
+# Windows-specific scripts: keep CRLF so PowerShell is happy
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
