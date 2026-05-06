@@ -1,9 +1,9 @@
 ---
-name: split-large-polygons
+name: split_large_polygons
 description: Step-by-step runbook for splitting a multi-million-feature polygon dataset by an admin boundary (LAD / ward / tile) in PostGIS when the production split functions in uk_baseline (split_layer_by_wards, split_layer_by_lad) are timing out, OOMing, or saturating WAL. Trigger when the user mentions splitting large polygon layers, slow ST_Intersection, work_mem spills, or batch-processing PostGIS data.
 ---
 
-# split-large-polygons — runbook
+# split_large_polygons — runbook
 
 A decision-tree for splitting a very large polygon layer by an admin boundary in PostGIS, when the single-transaction pipeline (`uk_baseline.split_layer_by_wards` / `split_layer_by_lad`) can't cope.
 
