@@ -21,6 +21,63 @@ last pushed wins; the other must pull before editing.
      `~/.claude/.git/` is missing — re-run the Mac-side bootstrap first.
 
 ### Windows
+
+If `C:\Users\po.nienchen\.claude\` already exists with runtime state from a
+previous Claude Code launch (almost certain on a machine where Claude Code has
+been opened even once), `git clone` directly into it will fail. Bootstrap with
+the **clone-merge** pattern, then add the repo to GitHub Desktop.
+
+#### First-time bootstrap (clone-merge into existing folder)
+
+```powershell
+# 1. Cache GitHub credentials so the PAT is reused
+git config --global credential.helper manager
+
+# 2. Clone the synced repo to a scratch dir
+$tmp = Join-Path $env:TEMP 'claude_config_clone'
+if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+git clone https://github.com/PoNienC/claude_config.git $tmp
+# (GCM will prompt once for your PAT, then cache it for future ops.)
+
+# 3. Merge tracked content into .claude\, preserving runtime dirs.
+#    /E includes hidden .git; /XO is defensive vs same-or-newer files.
+robocopy $tmp 'C:\Users\po.nienchen\.claude' /E /XO
+
+# 4. Clean up the scratch dir (use Git Bash or cmd — see gotcha below)
+```
+
+#### Verify
+
+```powershell
+cd C:\Users\po.nienchen\.claude
+git log --oneline -3      # confirms HEAD matches origin
+git status                # tracked files clean; runtime dirs ignored
+git remote -v             # origin → PoNienC/claude_config
+
+# Line endings on .sh hooks should be LF (per .gitattributes eol=lf)
+$bytes = [System.IO.File]::ReadAllBytes('hooks\session_start_context.sh')
+$hasCRLF = $false
+for ($i=0; $i -lt $bytes.Length-1; $i++) {
+  if ($bytes[$i] -eq 13 -and $bytes[$i+1] -eq 10) { $hasCRLF = $true; break }
+}
+Write-Output "hasCRLF=$hasCRLF"   # expect False
+```
+
+#### PowerShell 5.1 gotcha — `$env:TEMP` short-name path
+
+`$env:TEMP` resolves to a Windows 8.3 short-name path
+(`C:\Users\<USER>~1.<DOM>\AppData\Local\Temp\…`). PowerShell 5.1's `Move-Item`
+and `Remove-Item` reject that form with "An object at the specified path …
+does not exist." Workarounds:
+
+- `robocopy` handles short-name paths fine — use it for the merge step.
+- For cleanup, use Git Bash (`rm -rf "/c/Users/<you>/AppData/Local/Temp/claude_config_clone"`)
+  or `cmd /c "rmdir /s /q %TEMP%\claude_config_clone"`.
+
+#### Add to GitHub Desktop
+
+After bootstrap:
+
 1. Install GitHub Desktop from <https://desktop.github.com>.
 2. Sign in with your `PoNienC` GitHub account.
 3. **File → Add local repository** → choose `C:\Users\po.nienchen\.claude`.
@@ -56,6 +113,27 @@ Desktop sidebar.
 6. On the other machine, repeat **section 2 / "Before starting"** before your
    next session there.
 
+### Bidirectional discipline
+
+Both machines edit and push. There is no "primary" — source of truth is "the
+latest commit on `origin/main`". To keep history linear and avoid merge
+bubbles in this small personal repo:
+
+- **Default to rebase, not merge.** From the command line:
+  `git pull --rebase origin main`. From GitHub Desktop:
+  **Branch menu → Rebase current branch onto upstream branch**.
+- **If a rebase has conflicts**, fall back to the prompt in § 5.7 ("Resolve a
+  merge conflict") to have Claude Code untangle it.
+- **Never `git push --force` to `main`.** If you ever feel the need to, stop
+  and ask — there's almost always a non-destructive path.
+- **"I forgot to pull and now have local commits"** recipe: `git pull --rebase`
+  picks up the remote commits and replays yours on top. If it can't auto-merge,
+  same § 5.7 prompt.
+- **Settings hygiene**: machine-local prefs (theme, autoUpdatesChannel,
+  machine-specific MCP servers) belong in `settings.local.json`, which is
+  gitignored. Only put genuinely-shared config in tracked `settings.json`.
+  Claude Code merges both at runtime.
+
 ---
 
 ## 3. The underscore naming rule
@@ -65,10 +143,8 @@ folders, branch names, slash commands, agent/skill `name:` frontmatter,
 identifiers. If GitHub Desktop ever shows you committing a dash-named file,
 stop and rename it first.
 
-Known violation as of 2026-05-05:
-`skills/split-large-polygons/` exists only on the Windows machine. Rename
-from the Mac to `split_large_polygons` and push (see prompt in section 5
-below); Windows will pick it up on next pull.
+All current files comply. To enforce going forward, use the bulk audit prompt
+in § 5.7.
 
 ---
 
