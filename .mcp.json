@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "geoai": {
+      "command": "python3",
+      "args": [
+        "-c",
+        "from server import mcp; mcp.run(transport='stdio')"
+      ],
+      "env": {
+        "PYTHONPATH": "${HOME}/.claude/mcp_servers/geoai_mcp",
+        "GEOAI_BACKEND": "local",
+        "GEOAI_ROUTING_ENGINE": "osrm-demo"
+      }
+    }
+  }
+}

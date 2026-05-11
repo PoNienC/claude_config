@@ -56,3 +56,10 @@ plans/
 mcp-needs-auth-cache.json
 plugins/
 sessions/
+
+# --- Claude Code worktree internals (per-agent-session scratch) ---
+.claude/
+
+# --- GeoAI MCP server: sensitive zones never leave the machine ----
+mcp_servers/geoai_mcp/references/sensitive_zones.geojson
+mcp_servers/geoai_mcp/references/sensitive_zones.*.geojson

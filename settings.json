@@ -6,5 +6,26 @@
         "repo": "anthropics/claude-plugins-official"
       }
     }
+  },
+  "enabledMcpjsonServers": ["geoai"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__geoai__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${HOME}/.claude/hooks/pre_tool_geoai_validate_crs.py"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "mcp__geoai__geoai_get_crs_info",
+      "mcp__geoai__geoai_stac_search",
+      "mcp__geoai__geoai_calculate_isochrone"
+    ]
   }
 }

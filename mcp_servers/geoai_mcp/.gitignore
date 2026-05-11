@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Environment
+.env
+
+# Sensitive data — never commit
+references/sensitive_zones.geojson
+
+# Local cache
+cache/
+*.tif.aux.xml
+
+# Test artefacts
+tests/output/

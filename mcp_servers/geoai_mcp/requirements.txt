@@ -1,0 +1,27 @@
+# GeoAI MCP server dependencies
+#
+# Install on each machine after pulling the claude_config repo:
+#   macOS:   python3 -m pip install --user -r requirements.txt
+#   Windows: python -m pip install --user -r requirements.txt
+
+# Core MCP framework
+mcp[cli]>=1.0.0
+pydantic>=2.0
+
+# HTTP for routing engine calls
+httpx>=0.25
+
+# Geospatial primitives
+pyproj>=3.6           # CRS handling, EPSG lookup, hook validation
+shapely>=2.0          # Geometry validity, spatial predicates, sensitive zones
+pystac-client>=0.7    # STAC catalogue search
+planetary-computer>=1.0  # Microsoft Planetary Computer URL signing
+
+# Heavier AI dependencies — install only when you need detection/segmentation.
+# Comment back in when you implement geoai_detect / geoai_segment tools.
+# geoai-py>=0.29
+# rasterio>=1.3
+# geopandas>=0.14
+
+# Testing (optional)
+pytest>=7.4
