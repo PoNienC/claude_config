@@ -73,6 +73,13 @@ python scripts\split_layer_by_lad.py --layer <layer_name> --cleanup-only
 
 # Drop staging AND _exp03 + _exp03_dissolved (after deliverable verified):
 python scripts\split_layer_by_lad.py --layer <layer_name> --cleanup-only --cleanup-finals
+
+# Standalone audit -- runs the multipart-misassignment diagnostic against
+# one or more uk_baseline deliverables (auto-switches to sampled mode for
+# tables > 50k rows; full-table audit otherwise). Decoupled from the
+# pipeline so you can audit historical deliverables on demand:
+python scripts\audit_deliverable.py <table_name>            # single deliverable
+python scripts\audit_deliverable.py --cohort                # all 11 cohort deliverables
 ```
 
 The driver does NOT issue any session `SET` commands — DB session config (`work_mem`, `maintenance_work_mem`, `temp_buffers`, `max_parallel_workers_per_gather`) is used as-is. The DBA has tuned the server config; don't override it in scripts.
