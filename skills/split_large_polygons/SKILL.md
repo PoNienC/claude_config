@@ -108,6 +108,20 @@ CONFIG = {
 
 The longest derived staging identifier is `<prefix>_exp03_needs_split_sub_geom_gix` (31-char suffix). The longest deliverable index is `<deliverable>_lad25cd_idx` (12-char suffix). If either overflows 63 chars, shorten the suffix — `_geom_gix → _gix`, `_lad25cd_idx → _lcd_idx → _idx`. The driver validates this at startup.
 
+### When to enable `heavy_poly_bypass`
+
+The bypass (`WHERE ST_NPoints(a.geom) <= 1000` in Step 5) was calibrated for million-row sources where Step 5 would otherwise run for hours. It is **not** a "always-on" optimisation — for small layers it needlessly pushes wholly-inside heavy polygons into slow path.
+
+| Source scale | Heavy_count signal | Action |
+|---|---|---|
+| **> ~100 k rows** AND heavy_count > ~5 000 polygons (~5 % of source) | both met | **enable bypass** |
+| **< ~10 k rows** | irrelevant | leave OFF (Step 5 runs in seconds either way) |
+| **10 k – 100 k rows** | use Step 1.7 sample timing | judgement call — estimate Step 5 wall-clock first |
+
+Counter-example: AONB has `heavy_count = 33 / 34` (97 %), but only 34 rows total. Step 5 takes ~1 s regardless. Enabling the bypass here would only push 2 wholly-inside polygons (max_vx 24 k, both > 1000 vx) into the slow path needlessly.
+
+**Default for the NE small-layer tier** (AONB / LNR / SPA / ALC / SSSI): `heavy_poly_bypass: False`. Reconsider only for ancient_woodland / priority_habitats which may be large enough to qualify.
+
 ---
 
 ## Recipe (12-step pipeline)
