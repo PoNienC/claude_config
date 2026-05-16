@@ -142,3 +142,24 @@ The MCP server reads the `GEOAI_BACKEND` environment variable:
 
 You do not need to know which backend is active. The tools handle
 routing internally.
+
+---
+
+## Naming conventions (global)
+
+All names use underscores only, never dashes. Applies to files,
+folders, branch names, slash commands, agent / skill / hook `name:`
+frontmatter fields, and any other user-visible identifier you
+create or rename.
+
+- Prefer `snake_case_with_underscores` for new names.
+- When renaming a dash-named artefact, switch it to underscores in
+  the same change. Use `git mv` so history is preserved.
+- Built-in / vendor names that ship with dashes (e.g. Anthropic's
+  built-in `update-config` skill) are out of scope — leave them as
+  upstream defines them. The rule covers names you author.
+- If a proposed name has a dash, stop and rewrite it before
+  creating the file.
+
+This convention is enforced via the `sync_guide.md § 3` review step
+and the bulk audit prompt in `sync_guide.md § 5.7`.
