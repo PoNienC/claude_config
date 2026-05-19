@@ -1,13 +1,4 @@
-# GeoAI section — Spatial discipline for the global agent
-
-**Instructions for installing this content:**
-
-- If you already have a `CLAUDE.md` at the root of `claude_config`,
-  open it and append the content below the `---` separator to the end.
-- If you do not yet have a `CLAUDE.md` at the repo root, rename this
-  file to `CLAUDE.md` (delete this instruction block first).
-
----
+# Global Claude Code Instructions
 
 ## Identity and operating principle (spatial)
 
@@ -163,3 +154,65 @@ create or rename.
 
 This convention is enforced via the `sync_guide.md § 3` review step
 and the bulk audit prompt in `sync_guide.md § 5.7`.
+
+---
+
+## Language
+
+Primary language: British English (85%). Use Traditional Chinese only for section
+summaries and key decision points when explicitly requested by the user.
+
+---
+
+## Agent delegation
+
+Delegate to sub-agents rather than loading everything into the main conversation.
+
+| Task type | Agent | Model |
+|-----------|-------|-------|
+| Investigate 10+ files or map codebase structure | `researcher` | Haiku |
+| Implement code from a clear spec | `implementer` | Sonnet, worktree |
+| Review a function or file for quality issues | `code_reviewer` | Sonnet |
+| Architecture decisions, security audits | `reviewer` | Opus |
+| Write tests after implementation | `test_writer` | Sonnet |
+
+GeoAI-specific agents (`geoai_critic`, `gis_code_reviewer`, `spatial_data_explorer`, `sql_postgis_optimiser`) remain active for spatial work.
+
+**Cascade rule**: reach for Haiku/Sonnet first. Consult Opus only when the decision is genuinely architectural or the edge case is non-trivial.
+
+---
+
+## Context management
+
+- Run `/usage` to check current token consumption.
+- At 70% context: proactively notify the user and suggest `/compact <hint>` or `/clear`.
+- New unrelated task = new session (`/clear`). Do not carry stale context into a different problem.
+- `/rewind` (double-Esc) to discard a failed attempt without losing earlier file reads.
+- `/compact` to compress context mid-task; include a hint describing what to preserve.
+
+---
+
+## Execution discipline
+
+**Goal-driven, not step-driven.** Before acting, define what success looks like.
+Loop until verified against those criteria — not against a list of steps.
+
+**Surface conflicts, don't average them.** When two code patterns contradict each
+other, pick the more recent or more tested one, explain why, and flag the other
+for cleanup. Never silently blend conflicting approaches.
+
+**Checkpoint after significant steps.** After each significant action, summarise
+what was done, what is verified, and what remains. If you cannot describe the
+current state back clearly, stop and restate before continuing.
+
+**Fail loud.** "Completed" is wrong if anything was skipped silently. "Tests pass"
+is wrong if any were skipped. Surface uncertainty — never hide it.
+
+**Use the model only for judgment calls.** In spatial pipelines and tools, use
+Claude for classification, drafting, extraction, and decisions — not for routing,
+retries, or deterministic transforms (coordinate conversions, reprojection, format
+parsing). If code can answer, code answers.
+
+**Tests verify intent, not just behaviour.** Tests must encode WHY a behaviour
+matters, not just WHAT it does. A test that cannot fail when business logic
+changes is wrong.

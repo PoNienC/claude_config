@@ -16,6 +16,7 @@ ide/
 history.jsonl
 .credentials.json
 .last-update-check
+.last-cleanup
 oauth_account.json
 session-*.json
 
@@ -48,14 +49,18 @@ settings.json.bak.*
 hooks/local-*.sh
 
 # --- Additional Mac runtime folders missed in initial draft -------
-backups/
-cache/
-debug/
-file-history/
-plans/
+/backups/
+/cache/
+/debug/
+/file-history/
+/plans/
 mcp-needs-auth-cache.json
-plugins/
-sessions/
+/plugins/
+/sessions/
+/telemetry/
+/user-prompts.log
+/session-env/
+/downloads/
 
 # --- Claude Code worktree internals (per-agent-session scratch) ---
 .claude/
