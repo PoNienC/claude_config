@@ -234,6 +234,113 @@ Confirm marine cause with the top-N area-loss diagnostic before treating a high 
 
 ---
 
+## Downstream operations on `_lad` / `_wd` outputs (merges, differences, overlays)
+
+This section is a special case of the broader **"chunk every heavy
+spatial operation"** principle (see `~/.claude/rules/sql.md § Heavy
+geometry operations`). When the inputs are `_lad` / `_wd` deliverables
+the chunking key is free — they already carry `lad25cd` / `wd25cd`
+and were spatially clipped to it. Use it. For inputs without a free
+partition key, manufacture one (tile grid, S2 cell, geohash) — see
+the SQL rules for the pattern.
+
+### When to apply
+
+Trigger whenever the user asks to:
+- Merge / union multiple `_lad` or `_wd` layers in a single output
+- Cut one `_lad` layer where another overlaps (e.g. AW trimmed by AWR)
+- Spatial-join two `_lad` layers (e.g. SSSI × Priority Habitats)
+- Aggregate one `_lad` layer with `ST_Union(geom)` (e.g. dissolve all
+  Ramsars into one geom)
+
+### Mandatory pattern for `_lad` × `_lad` (or `_wd` × `_wd`)
+
+For any pairwise `ST_Difference` / `ST_Intersection` between two `_lad`
+deliverables sharing `lad25cd`:
+
+```sql
+WITH per_lad AS (
+    SELECT lad25cd, ST_Union(geom) AS geom
+    FROM uk_baseline.<other_lad_table>
+    GROUP BY lad25cd
+)
+INSERT INTO <target> (...)
+SELECT ...,
+       ST_Multi(
+           ST_CollectionExtract(
+               ST_MakeValid(
+                   CASE
+                       WHEN u.geom IS NULL THEN ed.geom
+                       WHEN ST_Intersects(ed.geom, u.geom)
+                            THEN ST_Difference(ed.geom, u.geom)
+                       ELSE ed.geom
+                   END
+               ), 3
+           )
+       )::geometry(MultiPolygon, 27700) AS new_geom
+FROM uk_baseline.<main_lad_table> ed
+LEFT JOIN per_lad u USING (lad25cd)
+WHERE ...;
+```
+
+Three things this pattern bakes in:
+1. **Partition by `lad25cd`** — small per-LAD union, fast per-row clip
+2. **Cast hygiene** — `ST_CollectionExtract(geom, 3)` keeps polygons
+   only; `ST_MakeValid` guards topology; `ST_Multi` normalises for the
+   `MultiPolygon` column cast
+3. **LEFT JOIN** — AW rows in LADs with no AWR pass through unchanged
+
+### Anti-pattern (do not write this)
+
+```sql
+-- ❌ Will run for hours and may not finish
+WITH big_union AS (
+    SELECT ST_Union(geom) AS geom FROM uk_baseline.<other_lad_table>
+)
+UPDATE uk_baseline.<main_lad_table> SET geom = ST_Difference(geom, big_union.geom)
+FROM big_union
+WHERE ST_Intersects(geom, big_union.geom);
+```
+
+Two failures: (a) `ST_Union(40 k national polygons)` produces a
+3-5 million-vertex MultiPolygon that's expensive to build and
+catastrophic to clip against in a loop; (b) `UPDATE` on a million-row
+table bloats it with MVCC versions requiring `VACUUM FULL` afterwards.
+
+### Cost calibration (env_environmental_designations_updated_v1, May 2026)
+
+Pairwise `ST_Difference(AW, AWR_union)` over 55,647 AW rows × 40,405
+AWR rows:
+
+| Approach | Wall-clock |
+|---|---|
+| Global `ST_Union(all AWR)` + per-row `ST_Difference` | abandoned at 74 min, not done |
+| Per-LAD `GROUP BY lad25cd` + `ST_Union` per LAD, LEFT JOIN clip | **19 min** |
+
+The user pays the difference in wall-clock. **Never propose the global
+approach when a partition key is available** — natural (`lad25cd`,
+`wd25cd`) or manufactured (tile grid). Propose the chunked pattern as
+your first answer. See `~/.claude/rules/sql.md` for the manufactured-
+grid pattern when no natural key exists.
+
+### Fresh-build over ALTER+UPDATE for the merged target
+
+Build the merged layer via `CREATE TABLE ... AS` + a small number of
+`INSERT ... SELECT` blocks into a fresh target. Avoid `ALTER TABLE ADD
+COLUMN` + multiple `UPDATE` on an existing large table — see
+`~/.claude/rules/sql.md § Heavy geometry operations § Fresh-build over
+ALTER+UPDATE` for the reasoning.
+
+Reference implementations:
+- `Working_Scripts/Natural_England/scripts/build_designations_updated_v1.py`
+  — 3-block fresh build with per-LAD `ST_Difference` in Block 2; supports
+  `--resume-from block-2|block-3|post-build` for safe recovery from
+  schema/cast errors without re-doing committed blocks.
+- `Working_Scripts/Natural_England/scripts/build_place_plus_natural_assets.py`
+  — N-source merge with per-source field mapping + `layer_name` tag.
+
+---
+
 ## See also
 
 - Operator workflow: `SQL/Split/USER_GUIDE.md`.
@@ -243,3 +350,5 @@ Confirm marine cause with the top-N area-loss diagnostic before treating a high 
 - Driver: `Working_Scripts/Natural_England/scripts/split_layer_by_lad.py`.
 - Folder conventions: `SQL/Split/CLAUDE.md` (or `AGENTS.md`).
 - Production functions to beat (smaller scale): `SQL/Working_Scripts/Function_split_layer_by_lad.sql`.
+- Heavy geometry operations rules: `~/.claude/rules/sql.md`.
+- Global performance discipline: `~/.claude/CLAUDE.md § Performance discipline`.
