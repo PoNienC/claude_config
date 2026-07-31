@@ -1,165 +1,114 @@
-# GeoAI section — Spatial discipline for the global agent
+# Global operating rules — router edition
 
-**Instructions for installing this content:**
+> Restructured 4 July 2026 (Po-approved). Full previous text preserved at
+> `~/.claude/backup_20260704/CLAUDE.md`. This file stays ≤150 lines and
+> holds only (1) universal always-on rules and (2) the routing table.
+> Long-form doctrine lives in `~/.claude/references/` and loads ONLY via
+> an explicit Read — never add big content here, and never use @imports
+> (they load eagerly at launch).
 
-- If you already have a `CLAUDE.md` at the root of `claude_config`,
-  open it and append the content below the `---` separator to the end.
-- If you do not yet have a `CLAUDE.md` at the repo root, rename this
-  file to `CLAUDE.md` (delete this instruction block first).
+## Routing table — Read the file BEFORE starting the matching work
 
----
+| When the task involves… | Read first |
+|---|---|
+| Spawning subagents, model/effort choice, escalation | `~/.claude/references/model_dispatch.md` |
+| Unsure: escalate? done? ask user? change approach? | `~/.claude/references/judgment_rubrics.md` |
+| Writing a task brief for any agent | `~/.claude/references/task_templates.md` |
+| Editing config/memory/rules; end-of-session upkeep | `~/.claude/references/maintenance_protocol.md` |
+| Importing/ingesting ANY external dataset to ANY store | `~/.claude/references/source_fidelity_ingestion.md` (MANDATORY before destination writes) |
+| Heavy spatial ops (>100k geoms, >5 min, big overlays) | `~/.claude/references/performance_discipline.md` |
+| Geospatial work (CRS, imagery, routing, analysis) | `~/.claude/references/geoai_operating.md` |
+| ANY SQL/PostGIS work — incl. psql via shell | `~/.claude/rules/sql.md` (paths-gated; Read it explicitly) |
+| GPKG → PostGIS loads | `~/.claude/rules/gpkg_to_postgis.md` |
+| Creating ANY document/deck/deliverable for P+P | `~/.claude/references/prior_partners_brand.md` |
+| Producing a diagram-led HTML workflow / PL / process report | invoke skill `pp_workflow_report` (bundled template) |
+| Diagnosing token waste / session slowness | `~/.claude/references/quick_diagnosis_20260704.md` |
+| Continuing the long-term system build | `~/.claude/references/letter_to_future_sessions.md` |
 
-## Identity and operating principle (spatial)
+## Universal rules (always on)
 
-When the user's task involves geospatial data, geometry, satellite
-imagery, raster or vector files, CRS reasoning, routing, accessibility,
-or any place-based analysis: operate as the GeoAI-Architect agent.
-Dispatch typed tools through the `geoai` MCP server rather than writing
-ad-hoc shapely or GDAL code. Improvisation is permitted only when the
-task is genuinely outside the existing tool surface, in which case flag
-the gap and propose a new tool rather than freelance one.
+### Reply style
+- Open EVERY reply with a one-line summary of the result — the outcome,
+  not a restatement of the request. One line, before anything else.
+- Body is bullet points by default. Use prose only where a bullet
+  genuinely cannot carry the point (a nuanced trade-off, a caveat that
+  needs a sentence). Never pad.
+- Applies to every reply in every session, including mid-task progress
+  updates and error reports.
 
-## Coordinate Reference System discipline
+### Language and links
+- British English everywhere: centre, colour, kilometre, behaviour.
+- Every output the user might open (file, folder, GPKG, report, commit,
+  PR) is given as a clickable markdown link when produced or mentioned.
+  EVERY file you create or write also gets its full absolute path in a
+  code block, every time — not only those outside the working tree.
+  Never leave the user hunting for where something landed.
 
-CRS errors are the single most common silent failure in spatial work.
-Apply these rules without exception:
+### Git and naming
+- NEVER append `Co-Authored-By: Claude ...` (or any Claude credit) to
+  commits. End the message at the last content line. Applies to every
+  repo, every commit, unless the user explicitly asks otherwise.
+- The word "claude" never appears in any name you author: branches,
+  PR/issue titles, commit messages, file names, identifiers.
+- Names use snake_case_with_underscores, never dashes (applies to files,
+  folders, branches, skills, agents you create). Vendor-shipped dashed
+  names stay as upstream defines them.
+- Commit or merge only what the user ordered or explicitly approved;
+  approved-but-unordered work goes to a PR and waits for review.
 
-- **Input data is geographic until proven otherwise.** Treat unknown
-  inputs as EPSG:4326 (WGS84 lat/lon) until inspection confirms.
-- **Default working CRS by region.** UK projects: EPSG:27700 (British
-  National Grid). Western Europe: EPSG:3035 (ETRS89-LAEA). Continental
-  US: EPSG:5070 (NAD83 Albers). Global area calculations: EPSG:54009
-  (Mollweide). Web tile output: EPSG:3857 (Web Mercator) — and only
-  for tile output, never for analysis.
-- **Never measure distances or areas in EPSG:4326.** Degrees are not
-  metres. Reproject to a projected CRS first.
-- **Always call `geoai_get_crs_info` before any reprojection** if the
-  target CRS is not one of the four above.
-- **Web Mercator distorts area at high latitudes.** Do not use it for
-  area-weighted analysis above 60° N or below 60° S.
+### Claude config location
+- All Claude config (`.claude/` — settings, rules, skills, agents,
+  memory, hooks, launch.json) lives ONLY in the local profile
+  `C:\Users\<user>\.claude\`. Never on network/shared drives (P:, N:)
+  and never inside OneDrive-synced project folders. Project data and
+  tools MAY live on shares; Claude config never does.
 
-The deterministic Hook `pre_tool_geoai_validate_crs.py` enforces this
-at infrastructure level. It cannot be talked past by a clever prompt.
+### Continuity files
+- `HANDOVER.md` (or any personal continuity note) in a project root is
+  personal — gitignore it in the same change that creates it. The root
+  `HANDOVER.md` is the single LIVE state file per project:
+  overwrite-in-place, ≤120 lines, with a "pending decisions" list at
+  the top. Versioned handover documents are frozen archive, named
+  `HANDOVER_<Description>_<YYMMDD>.md` (e.g.
+  `HANDOVER_PP_Claude_Introduction_260714.md`) — do not re-read them
+  for routine session starts.
 
-## Catalogue and data source priority
+### CRS hard rules (full doctrine: references/geoai_operating.md)
+- Unknown inputs are EPSG:4326 until inspection proves otherwise.
+- Working CRS: UK → 27700; W Europe → 3035; CONUS → 5070; global area →
+  54009; web tiles → 3857 (output only, never analysis).
+- NEVER measure distance or area in EPSG:4326 — reproject first.
+- Every spatial output states its CRS; verify CRS explicitly before
+  declaring any spatial result correct.
 
-When fetching geospatial data, prefer in this order:
+### Database naming and writes
+- Never invent the name of a production/published table, view, or
+  schema — ask the user (staging names are yours to choose). Never
+  write to a production geodatabase without an explicit `--confirm`.
+- Spatial-table floor: exactly one PRIMARY KEY + exactly one GIST(geom)
+  + table & column comments, or the load is INCOMPLETE. Any further
+  index needs per-instance user approval. Details: rules/sql.md.
 
-1. **Microsoft Planetary Computer STAC** for satellite imagery
-   (Sentinel, Landsat, NAIP, MODIS). Free, fast, requester-pays handled.
-2. **Overture Maps** for global vector substrate (buildings, places,
-   roads, land use, water).
-3. **NASA Earthdata** for atmospheric, hydrologic, and climate data.
-4. **Local cached data** under `~/.claude/cache/geoai/` if a query has
-   been run before. Always check cache first.
-5. **OSM Overpass API** only when Overture lacks coverage.
-6. **Commercial APIs** only when explicitly requested and the
-   credential is configured.
+### Cost honesty
+- Before any operation estimated >5 minutes: state the naive cost, the
+  cheaper chunked alternative, and why it is equivalent — BEFORE
+  running. A failed hour is your fault. Details:
+  references/performance_discipline.md.
 
-## Units and language
+### P+P brand (full reference: references/prior_partners_brand.md)
+- Any document/deck/spreadsheet leaving the building is in Prior +
+  Partners house style by default: start from the official template;
+  GT America (fallback Arial only — never ship font files externally);
+  Orange FF511D / Aubergine 2B242C / Cream F1EEDF / Black 121212;
+  sentence case; dates `DD Month YYYY`; units sqm/sqkm/ha; "Prior +
+  Partners" with spaces around the +.
 
-- **Metric by default.** Distances in metres or kilometres, areas in
-  square metres or hectares, elevations in metres above WGS84
-  ellipsoid unless a vertical datum is specified.
-- **British English.** Centre, colour, kilometre, behaviour. Spelling
-  matters for keyword matching against UK datasets.
+## Session pattern (cheap-model default)
 
-## Cartographic defaults
-
-- **Sequential ramps**: Viridis (perceptually uniform, accessible).
-- **Diverging ramps**: RdBu or BrBG.
-- **Qualitative palettes**: Carto Bold, maximum 8 categories.
-- **Map projection for print**: equal-area suited to extent (Albers
-  for mid-latitude regions, Lambert conformal conic for elongated
-  regions).
-- **Always include**: north arrow, scale bar, source attribution,
-  CRS string, date of analysis.
-
-## Safety red-lines
-
-These are non-negotiable. The Hooks under `hooks/` enforce them
-deterministically. Do not attempt to work around them.
-
-- **Never reproject without first validating the target CRS** through
-  `geoai_get_crs_info`. The `pre_tool_geoai_validate_crs.py` Hook
-  blocks invalid arguments.
-- **Never write to a production geodatabase** without an explicit
-  `--confirm` argument from the user. The Hook on
-  `geoai_postgis_query` (when implemented) enforces read-only by
-  default.
-- **Never send coordinates inside
-  `mcp_servers/geoai_mcp/references/sensitive_zones.geojson` to a
-  third-party API**, including any LLM cloud endpoint, without the
-  user's explicit confirmation. The `is_inside_sensitive_zone` check
-  in the MCP server's safety module enforces this.
-- **Never download more than 100 km² of imagery in one tool call.**
-  The bbox-area check (when added to `geoai_stac_search`) blocks
-  larger requests; chunk the area into tiles.
-- **Never execute SQL against a database** without first running
-  schema introspection. Hallucinated column names are the single
-  largest failure mode of AI-generated spatial SQL.
-
-## Workflow patterns
-
-For multi-step spatial analyses (data fetch → process → analyse →
-visualise):
-
-1. **Plan first.** State the steps before executing. Allow the user
-   to correct the plan.
-2. **Delegate to subagents.** Use `geoai_critic` at the end of any
-   analytical workflow to review outputs before they reach the user.
-   Future subagents (`data_fetcher`, `cartographer`) follow the same
-   pattern.
-3. **Emit a manifest at the end.** Capture inputs, parameters, model
-   versions, output paths, and provenance hashes. This is the audit
-   trail.
-
-## Domain Skill routing
-
-When the user's request matches a Skill's `description` field, fork
-that Skill rather than improvising. Currently active GeoAI Skills:
-
-- `urban_plan_evaluator` — masterplan critique, view corridors,
-  frontage classification, walkability, 3D massing analysis.
-- `accessibility_equity_auditor` — isochrones, origin-destination
-  matrices, hub-and-spoke optimisation, service-area equity gaps,
-  last-mile coverage.
-
-If no Skill matches, proceed with primitive MCP tools and at the end
-of the session propose what a new Skill for this domain should
-encapsulate.
-
-## Backend awareness
-
-The MCP server reads the `GEOAI_BACKEND` environment variable:
-
-- `local` (default) — geoprocessing on this machine via direct
-  Python (pyproj, shapely, geoai-py).
-- `onprem` — dispatch to a local PostGIS, internal STAC, on-prem
-  inference server.
-- `cloud` — dispatch to AWS / GCP serverless, COG over S3,
-  GeoParquet, Earth Engine.
-
-You do not need to know which backend is active. The tools handle
-routing internally.
-
----
-
-## Naming conventions (global)
-
-All names use underscores only, never dashes. Applies to files,
-folders, branch names, slash commands, agent / skill / hook `name:`
-frontmatter fields, and any other user-visible identifier you
-create or rename.
-
-- Prefer `snake_case_with_underscores` for new names.
-- When renaming a dash-named artefact, switch it to underscores in
-  the same change. Use `git mv` so history is preserved.
-- Built-in / vendor names that ship with dashes (e.g. Anthropic's
-  built-in `update-config` skill) are out of scope — leave them as
-  upstream defines them. The rule covers names you author.
-- If a proposed name has a dash, stop and rewrite it before
-  creating the file.
-
-This convention is enforced via the `sync_guide.md § 3` review step
-and the bulk audit prompt in `sync_guide.md § 5.7`.
+1. Read the project's root `HANDOVER.md` (live state + pending
+   decisions). Do not re-read archives.
+2. Route via the table above before starting specialised work.
+3. Delegate field work per model_dispatch.md; keep the main thread for
+   decisions.
+4. Close loops before ending: approved work → committed/PR'd; state
+   file updated; lessons → memory per maintenance_protocol.md.
