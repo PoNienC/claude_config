@@ -1,0 +1,9 @@
+{
+  "name": "Orange Input",
+  "base": "dark",
+  "overrides": {
+    "promptBorder": "#ff9933",
+    "claude": "#ff9933",
+    "suggestion": "#ff9933"
+  }
+}
