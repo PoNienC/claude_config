@@ -63,3 +63,19 @@ sessions/
 # --- GeoAI MCP server: sensitive zones never leave the machine ----
 mcp_servers/geoai_mcp/references/sensitive_zones.geojson
 mcp_servers/geoai_mcp/references/sensitive_zones.*.geojson
+
+# --- Session transcript backups: NEVER commit ---------------------
+# Raw .jsonl conversation history. Contains whatever was discussed —
+# credentials, client data, file contents. Machine-local only.
+_session_backup_premove/
+_session_backup*/
+
+# --- More runtime state (2026-07 sweep) ---------------------------
+tasks/
+telemetry/
+scheduled-tasks/
+.last-cleanup
+.last-update-result.json
+
+# --- Rendered diagram previews: code yes, megabytes of PNG no -----
+tools/diagram_render/_preview/
