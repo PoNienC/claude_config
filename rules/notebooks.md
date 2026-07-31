@@ -1,5 +1,5 @@
 ---
-globs: notebooks/**/*.ipynb
+paths: ["notebooks/**/*.ipynb"]
 ---
 
 # Notebook rules

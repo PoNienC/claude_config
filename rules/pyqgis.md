@@ -1,5 +1,5 @@
 ---
-globs: pyqgis/**/*.py
+paths: ["pyqgis/**/*.py"]
 ---
 
 # PyQGIS-specific rules

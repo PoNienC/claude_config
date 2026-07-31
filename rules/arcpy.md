@@ -1,5 +1,5 @@
 ---
-globs: arcpy/**/*.py, arcpy/**/*.pyt
+paths: ["arcpy/**/*.py", "arcpy/**/*.pyt"]
 ---
 
 # ArcPy-specific rules
