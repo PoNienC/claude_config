@@ -1,5 +1,5 @@
 ---
-globs: "**/scripts/load_*_to_postgis.py,**/scripts/*ingest*.py,**/*Natural_England*/**,**/*postgis_ingest*/**"
+paths: ["**/scripts/load_*_to_postgis.py", "**/scripts/*ingest*.py", "**/*Natural_England*/**", "**/*postgis_ingest*/**"]
 ---
 
 # GeoPackage → PostGIS ingestion rules
@@ -17,7 +17,11 @@ The canonical working scripts live at:
 
 ### Optional flags
 
-- `--add-area-ha` — adds a plain `area_ha double precision` column populated once via `ST_Area(geom)/10000`. Requires a projected CRS in metres (BNG works directly). Column has a `COMMENT ON COLUMN` noting it's computed at load and goes stale if the geometry is later edited. Only meaningful for polygon layers.
+- `--add-area-ha` — adds a plain `area_ha double precision` column populated once via `ST_Area(geom)/10000`. Requires a projected CRS in metres (BNG works directly). Column has a `COMMENT ON COLUMN` noting it's computed at load and goes stale if the geometry is later edited. The loader auto-detects geometry type via `classify_geometry()`: Point/Line layers cause the flag to be silently skipped with a warning, polygon layers proceed, `Unknown (any)` proceeds with a notice. Honouring the flag literally on point layers used to produce a column of zero hectares — that footgun is gone.
+
+### Origin geometry reporting
+
+Every load logs a one-line "Origin geometry: <type> (bucket=<polygon|point|line|unknown>, SRID=..., features=...)" banner immediately after ogrinfo inspection. The bucket is the same one `--add-area-ha`'s guard reads, so a misapplied flag is visible at a glance even when scrolling through logs.
 
 For a new dataset cohort, **copy the three scripts**, edit the `MAPPING` and `SCHEMA` constants in `run_all.py`, and run. Don't re-derive the pattern from scratch.
 
@@ -33,7 +37,27 @@ ogr2ogr -f PostgreSQL "PG:" <gpkg> <layer>
   -overwrite      # or -append
 ```
 
-PG credentials go in env (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`), **not** in the connection string. After load, always: GIST index on `geom`, btree on any tile/region column, `VACUUM ANALYZE`, and a `COMMENT ON TABLE` recording source filename + ISO load timestamp + SRID.
+PG credentials go in env (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`), **not** in the connection string. After load, always: GIST index on `geom`, `VACUUM ANALYZE`, and a `COMMENT ON TABLE` recording source filename + ISO load timestamp + SRID.
+
+**`FID=gid` does NOT guarantee a primary key.** `-nlt PROMOTE_TO_MULTI` (and any
+multipolygon→single-part explosion) makes the source FID **repeat across the
+exploded rows**, so `-lco FID=gid` produces a *non-unique* `gid` and **no PK
+constraint is created** — the load finishes with a GIST but silently no PK.
+**Verify the PK after every load** (see `sql.md` § "Verification"); if the FID
+column isn't unique, add a fresh surrogate
+`ALTER TABLE <schema>.<table> ADD COLUMN gid bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY;`
+(part of the default set — no approval needed).
+
+**Index discipline (see `sql.md` § "Index discipline"):** the floor is **exactly
+one PK + exactly one GIST(geom)** — a load is not complete without both. That is
+also the maximum default set: any other index — btree on tile/region column,
+`source_file`, date column, attribute — requires per-instance sign-off, even
+mid-load. Notify and wait.
+
+**Catalogue refresh (if loading into / promoting to `uk_baseline`):** the load is
+not finished until the published catalogue is regenerated and all three outputs
+are refreshed — Excel, standalone HTML, and the live GitHub Pages site. Full
+procedure and commands in `sql.md` § "Catalogue refresh (uk_baseline)".
 
 ## Two Windows environment gotchas
 
