@@ -226,6 +226,44 @@ if (-not $ConfigOnly) {
     }
 }
 
+# --- Completeness self-check ----------------------------------------
+# The four %APPDATA%\Claude paths are the ones most likely to go missing
+# without anyone noticing: the Desktop app holds them, and some contexts
+# cannot see that folder at all. Fail loudly rather than reporting a
+# clean run over a backup with a hole in it.
+$expectAppData = @(
+    @{ label = 'desktop_code_sessions'
+       check  = (Join-Path $mirrorRoot 'desktop_code_sessions') }
+    @{ label = 'desktop_agent_mode_sessions'
+       check  = (Join-Path $mirrorRoot 'desktop_agent_mode_sessions') }
+    @{ label = 'claude_desktop_config.json'
+       check  = (Join-Path $snapshotDir 'claude_desktop_config.json') }
+)
+
+$gaps = @()
+foreach ($e in $expectAppData) {
+    $present = $false
+    if (Test-Path $e.check) {
+        $item = Get-Item $e.check
+        if ($item.PSIsContainer) {
+            $n = @(Get-ChildItem $e.check -Recurse -File -ErrorAction SilentlyContinue).Count
+            if ($n -gt 0) { $present = $true }
+        } else {
+            $present = $true
+        }
+    }
+    if (-not $present) { $gaps += $e.label }
+}
+
+if ($gaps.Count -gt 0) {
+    Write-Log "" 'WARN'
+    Write-Log "INCOMPLETE BACKUP - these Desktop-app paths are empty or absent:" 'WARN'
+    foreach ($g in $gaps) { Write-Log "    - $g" 'WARN' }
+    Write-Log "Fix: run this script from a normal PowerShell window (not from" 'WARN'
+    Write-Log "inside a Claude session, which cannot read %APPDATA%\Claude)." 'WARN'
+    Write-Log "" 'WARN'
+}
+
 # --- Manifest --------------------------------------------------------
 $elapsed = (Get-Date) - $startedAt
 $manifest = [ordered]@{
@@ -237,6 +275,8 @@ $manifest = [ordered]@{
     config_snapshot     = $snapshotDir
     config_files_copied = $configCopied
     failures            = $failures
+    appdata_gaps        = $gaps
+    complete            = ($failures.Count -eq 0 -and $gaps.Count -eq 0)
     machine             = $env:COMPUTERNAME
 }
 $manifestPath = Join-Path $Destination 'last_backup_manifest.json'

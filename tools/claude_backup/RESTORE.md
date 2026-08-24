@@ -1,149 +1,204 @@
 # Restore runbook — Claude data
 
-Written while nothing is broken. Follow it top to bottom when the Claude
-Desktop app has failed, a repair has failed, or you are moving to a new
-machine.
+Written while nothing is broken. Follow it top to bottom after a failed
+repair, a reinstall, or on a brand-new machine.
 
-Backup root: `C:\claude_backups`
-Backup script: `~/.claude/tools/claude_backup/backup_claude_data.ps1`
+- **Backup root:** `C:\claude_backups`
+- **Backup script:** `~/.claude/tools/claude_backup/backup_claude_data.ps1`
+- **Nightly task:** `claude_data_backup`, 22:00 daily
+- **Personal config repo:** <https://github.com/PoNienC/claude_config>
+- **Work config repo:** local at `~/.claude-work` (add your remote)
 
 ---
 
 ## 0. Before you repair or reinstall anything
 
-Run this first. It takes seconds if a mirror already exists, and it is
-the difference between a clean restore and a guess.
-
 ```powershell
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\tools\claude_backup\backup_claude_data.ps1"
 ```
 
-Then confirm it succeeded:
+Then confirm:
 
 ```powershell
-Get-Content C:\claude_backups\last_backup_manifest.json
+Get-Content C:\claude_backups\last_backup_manifest.json | ConvertFrom-Json |
+  Select-Object complete, mirror_total_mb, appdata_gaps, failures
 ```
 
-`failures` must be `[]`. If it is not, fix that before touching the app.
+`complete` must be `True`. If not, fix that **before** touching the app —
+a backup with a hole is worse than knowing you have none.
 
 ---
 
 ## 1. What you do NOT need to restore
 
-- **claude.ai chat conversations.** Server-side. Reinstall, sign in,
-  they come back on their own. Do not go hunting for them locally.
-- **Claude Code binaries, `vm_bundles/`, caches.** Re-downloaded
-  automatically on first launch. They are ~9.9 GB and deliberately not
-  in the backup.
+- **claude.ai conversations.** Server-side. Reinstall, sign in, they
+  return by themselves. Do not go hunting locally.
+- **Binaries, `vm_bundles/`, caches.** ~9.9 GB, re-downloaded on first
+  launch. Deliberately not in the backup.
 
-If the only thing you lost was the app itself, reinstall and stop here.
-
----
-
-## 2. Reinstall
-
-1. Reinstall Claude Desktop from the official download.
-2. Launch and sign in as `pnchenspacesyntax@gmail.com` (personal Max).
-3. Confirm your claude.ai conversations are visible before continuing.
-4. If you use the VS Code work setup, confirm the extension
-   `anthropic.claude-code` is present in `~/.vscode/extensions`.
+If you only lost the app, reinstall and stop after step 3.
 
 ---
 
-## 3. Restore config from git (preferred — text, versioned)
+## 2. Fresh machine — start from nothing
 
-Personal config:
+Assumes a blank Windows install with nothing set up.
+
+### 2.1 Prerequisites
+
+| Tool | Why | Get it |
+|---|---|---|
+| Git for Windows | clone both config repos | <https://git-scm.com/download/win> |
+| GitHub Desktop | your review-and-push surface | <https://desktop.github.com> |
+| VS Code | the work Claude environment | <https://code.visualstudio.com> |
+| Claude Desktop | personal Claude | <https://claude.ai/download> |
+
+### 2.2 Recover the backup itself first
+
+If the machine is new, `C:\claude_backups` does not exist yet. Copy it
+from wherever the drive/folder survived, to the same path. Everything
+below assumes `C:\claude_backups` is present.
+
+> If the backup did **not** survive: you still get claude.ai
+> conversations back (server-side) and both config repos from GitHub.
+> Only local Code transcripts are lost. That is the whole reason this
+> backup exists.
+
+### 2.3 Git identity
 
 ```powershell
-cd $env:USERPROFILE
-git clone https://github.com/PoNienC/claude_config.git .claude_restored
+git config --global user.name  "PoNienChenPP"
+git config --global user.email "ponien.chen@priorpartners.com"
+git config --global credential.helper manager
 ```
-
-Then merge into place, preserving anything new:
-
-```powershell
-robocopy "$env:USERPROFILE\.claude_restored" "$env:USERPROFILE\.claude" /E /XO
-Remove-Item "$env:USERPROFILE\.claude_restored" -Recurse -Force
-```
-
-Work config: clone the work config repo to `~/.claude-work` the same way.
-If that repo does not exist yet, use the mirror copy in step 4 instead.
 
 ---
 
-## 4. Restore bulk data from the mirror
+## 3. Reinstall and sign in
+
+1. Install Claude Desktop, launch, sign in as
+   **`pnchenspacesyntax@gmail.com`** (personal Max).
+2. Confirm your claude.ai conversations appear. If yes, the server side
+   is fine and everything remaining is local restoration.
+3. Install VS Code. Confirm the `anthropic.claude-code` extension is
+   present (or install it from the Marketplace).
+
+---
+
+## 4. Restore config from git — do this before step 5
+
+Git holds the *text* config: rules, skills, agents, commands, CLAUDE.md.
+The mirror holds the *data*. Config first, so the mirror does not
+overwrite a half-built tree.
+
+**Personal** — clone to a temp path, then merge so runtime folders are
+preserved if any already exist:
+
+```powershell
+git clone https://github.com/PoNienC/claude_config.git "$env:TEMP\claude_config_clone"
+robocopy "$env:TEMP\claude_config_clone" "$env:USERPROFILE\.claude" /E
+Remove-Item "$env:TEMP\claude_config_clone" -Recurse -Force
+```
+
+> `/E` includes the hidden `.git` folder, so `~/.claude` becomes a
+> working clone. If `Remove-Item` fails on the 8.3 temp path, delete it
+> from Git Bash instead:
+> `rm -rf "/c/Users/<you>/AppData/Local/Temp/claude_config_clone"`
+
+**Work** — same shape, into `~/.claude-work`:
+
+```powershell
+git clone <work-config-repo-url> "$env:TEMP\claude_work_clone"
+robocopy "$env:TEMP\claude_work_clone" "$env:USERPROFILE\.claude-work" /E
+Remove-Item "$env:TEMP\claude_work_clone" -Recurse -Force
+```
+
+If no work remote exists yet, skip this — step 5 restores
+`work_config` from the mirror instead.
+
+---
+
+## 5. Restore bulk data from the mirror
 
 Each mirror folder maps to exactly one destination:
 
 | Mirror folder | Restore to |
 |---|---|
-| `mirror\personal_projects` | `%USERPROFILE%\.claude\projects` |
-| `mirror\personal_sessions` | `%USERPROFILE%\.claude\sessions` |
-| `mirror\personal_session_backup_premove` | `%USERPROFILE%\.claude\_session_backup_premove` |
-| `mirror\work_projects` | `%USERPROFILE%\.claude-work\projects` |
-| `mirror\work_sessions` | `%USERPROFILE%\.claude-work\sessions` |
-| `mirror\work_file_history` | `%USERPROFILE%\.claude-work\file-history` |
-| `mirror\work_config` | `%USERPROFILE%\.claude-work` |
-| `mirror\desktop_code_sessions` | `%APPDATA%\Claude\claude-code-sessions` |
-| `mirror\desktop_agent_mode_sessions` | `%APPDATA%\Claude\local-agent-mode-sessions` |
-
-Restore one with:
-
-```powershell
-robocopy "C:\claude_backups\mirror\personal_projects" "$env:USERPROFILE\.claude\projects" /E
-```
+| `personal_projects` | `%USERPROFILE%\.claude\projects` |
+| `personal_sessions` | `%USERPROFILE%\.claude\sessions` |
+| `personal_session_backup_premove` | `%USERPROFILE%\.claude\_session_backup_premove` |
+| `work_projects` | `%USERPROFILE%\.claude-work\projects` |
+| `work_sessions` | `%USERPROFILE%\.claude-work\sessions` |
+| `work_file_history` | `%USERPROFILE%\.claude-work\file-history` |
+| `work_config` | `%USERPROFILE%\.claude-work` |
+| `desktop_code_sessions` | `%APPDATA%\Claude\claude-code-sessions` |
+| `desktop_agent_mode_sessions` | `%APPDATA%\Claude\local-agent-mode-sessions` |
 
 Restore all of them:
 
 ```powershell
 $map = @{
-  'personal_projects'                = "$env:USERPROFILE\.claude\projects"
-  'personal_sessions'                = "$env:USERPROFILE\.claude\sessions"
-  'personal_session_backup_premove'  = "$env:USERPROFILE\.claude\_session_backup_premove"
-  'work_projects'                    = "$env:USERPROFILE\.claude-work\projects"
-  'work_sessions'                    = "$env:USERPROFILE\.claude-work\sessions"
-  'work_file_history'                = "$env:USERPROFILE\.claude-work\file-history"
-  'work_config'                      = "$env:USERPROFILE\.claude-work"
-  'desktop_code_sessions'            = "$env:APPDATA\Claude\claude-code-sessions"
-  'desktop_agent_mode_sessions'      = "$env:APPDATA\Claude\local-agent-mode-sessions"
+  'personal_projects'               = "$env:USERPROFILE\.claude\projects"
+  'personal_sessions'               = "$env:USERPROFILE\.claude\sessions"
+  'personal_session_backup_premove' = "$env:USERPROFILE\.claude\_session_backup_premove"
+  'work_projects'                   = "$env:USERPROFILE\.claude-work\projects"
+  'work_sessions'                   = "$env:USERPROFILE\.claude-work\sessions"
+  'work_file_history'               = "$env:USERPROFILE\.claude-work\file-history"
+  'work_config'                     = "$env:USERPROFILE\.claude-work"
+  'desktop_code_sessions'           = "$env:APPDATA\Claude\claude-code-sessions"
+  'desktop_agent_mode_sessions'     = "$env:APPDATA\Claude\local-agent-mode-sessions"
 }
 foreach ($k in $map.Keys) {
   $src = "C:\claude_backups\mirror\$k"
-  if (Test-Path $src) { robocopy $src $map[$k] /E /R:1 /W:1 | Out-Null; Write-Output "restored $k" }
+  if (Test-Path $src) {
+    robocopy $src $map[$k] /E /R:1 /W:1 | Out-Null
+    Write-Output "restored $k -> $($map[$k])"
+  } else {
+    Write-Warning "missing from backup: $k"
+  }
 }
 ```
 
-> Use `/E` here, not `/MIR`. `/MIR` would delete anything in the
-> destination that is not in the backup.
+> Use `/E`, never `/MIR`. `/MIR` deletes anything in the destination
+> that is not in the backup.
+
+Close Claude Desktop before restoring the two `%APPDATA%\Claude` folders,
+or the running app may overwrite them.
 
 ---
 
-## 5. Restore the MCP config
+## 6. Restore the MCP config
 
-Highest value per byte in the whole backup — hand-built and not
+Highest value per byte in the whole backup — hand-built, not
 reproducible from memory.
 
 ```powershell
-Copy-Item "C:\claude_backups\config_snapshots\<newest>\claude_desktop_config.json" `
+$newest = Get-ChildItem C:\claude_backups\config_snapshots |
+          Sort-Object Name -Descending | Select-Object -First 1
+Copy-Item "$($newest.FullName)\claude_desktop_config.json" `
           "$env:APPDATA\Claude\claude_desktop_config.json" -Force
+Copy-Item "$($newest.FullName)\desktop_config.json" `
+          "$env:APPDATA\Claude\config.json" -Force
+Write-Output "restored MCP config from $($newest.Name)"
 ```
 
-Pick `<newest>` with:
+If the newest snapshot is itself suspect — the config was already
+corrupted when it was taken — walk back through older ones. That is
+precisely why 10 generations are kept:
 
 ```powershell
-Get-ChildItem C:\claude_backups\config_snapshots | Sort-Object Name -Descending | Select-Object -First 1
+Get-ChildItem C:\claude_backups\config_snapshots | Sort-Object Name -Descending
 ```
 
-If the newest snapshot is itself suspect (the config was already
-corrupted when it was taken), walk back through the older snapshots —
-that is exactly why 10 generations are kept.
+**Not restored, by design:** `.credentials.json` and `.claude.json`.
+Those are auth and machine identity — you get them fresh by signing in.
+Never copy them between machines.
 
 ---
 
-## 6. Restore the work VS Code launcher
+## 7. Recreate the work VS Code launcher
 
-The work setup is a shortcut, not an install. If the desktop shortcut is
-gone, recreate it:
+The work setup is a shortcut, not an install.
 
 - **Target:** `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
 - **Arguments:**
@@ -152,29 +207,72 @@ gone, recreate it:
   ```
 - **Start in:** `C:\Users\po.nienchen`
 - **Icon:** `C:\Program Files\Microsoft VS Code\Code.exe,0`
+- **Name:** `Company Claude (VS Code)`
 
-Sign in inside that window as `ponien.chen@priorpartners.com`
-(PriorPartners team seat).
+Or create it from PowerShell:
+
+```powershell
+$s = (New-Object -ComObject WScript.Shell).CreateShortcut("$env:USERPROFILE\Desktop\Company Claude (VS Code).lnk")
+$s.TargetPath  = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+$s.Arguments   = '-NoProfile -WindowStyle Hidden -Command "$env:CLAUDE_CONFIG_DIR=''C:\Users\po.nienchen\.claude-work''; code --user-data-dir ''C:\Users\po.nienchen\.vscode-work''"'
+$s.WorkingDirectory = 'C:\Users\po.nienchen'
+$s.IconLocation = 'C:\Program Files\Microsoft VS Code\Code.exe,0'
+$s.Save()
+```
+
+Launch it and sign in as **`ponien.chen@priorpartners.com`**
+(PriorPartners team seat). Org policy re-downloads automatically.
 
 ---
 
-## 7. Verify
+## 8. Re-arm the nightly backup
 
-Check each of these before declaring the restore done:
+The scheduled task does not survive a machine rebuild.
 
-- [ ] `Get-ChildItem "$env:USERPROFILE\.claude\projects" -Recurse -Filter *.jsonl | Measure-Object` — expect ~222
-- [ ] `Get-ChildItem "$env:USERPROFILE\.claude-work\projects" -Recurse -Filter *.jsonl | Measure-Object` — expect ~68
-- [ ] Personal Claude Code: `/resume` lists your old sessions
-- [ ] Work VS Code window: signed in as the priorpartners.com account
+```powershell
+$taskName = 'claude_data_backup'
+$script   = "$env:USERPROFILE\.claude\tools\claude_backup\backup_claude_data.ps1"
+Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+$action  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`""
+$trigger = New-ScheduledTaskTrigger -Daily -At '22:00'
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 2) -MultipleInstances IgnoreNew
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description 'Nightly backup of irreplaceable Claude data to C:\claude_backups.'
+```
+
+---
+
+## 9. Verify — tick every box
+
+```powershell
+# Transcript counts (compare against the baseline table below)
+(Get-ChildItem "$env:USERPROFILE\.claude\projects" -Recurse -Filter *.jsonl).Count
+(Get-ChildItem "$env:USERPROFILE\.claude-work\projects" -Recurse -Filter *.jsonl).Count
+(Get-ChildItem "$env:APPDATA\Claude\local-agent-mode-sessions" -Recurse -File).Count
+
+# Repo health
+git -C "$env:USERPROFILE\.claude" status
+git -C "$env:USERPROFILE\.claude" remote -v      # expect PoNienC/claude_config
+
+# Scheduled task
+Get-ScheduledTaskInfo -TaskName claude_data_backup | Select-Object LastRunTime, LastTaskResult, NextRunTime
+```
+
+- [ ] Personal `.jsonl` count ≈ baseline
+- [ ] Work `.jsonl` count ≈ baseline
+- [ ] Personal Claude Code: `/resume` lists old sessions
+- [ ] Work VS Code window signed in as the priorpartners.com account
 - [ ] `/mcp` shows your MCP servers connected
-- [ ] `cd $env:USERPROFILE\.claude; git status` — clean, remote is `PoNienC/claude_config`
-- [ ] Run the backup script once more so the mirror reflects the restored state
+- [ ] `/context` shows your skills and rules loaded
+- [ ] Both repos clean, correct remotes
+- [ ] Scheduled task `Ready`, `NextRunTime` tomorrow 22:00
+- [ ] Run the backup once more so the mirror reflects restored state
 
 ---
 
-## Counts as of the last full survey (2026-08-24)
+## Baseline counts (survey of 2026-08-24)
 
-Use these as the expected-value baseline when verifying:
+Expected values when verifying a restore:
 
 | Path | Files | Size |
 |---|---:|---:|
@@ -184,5 +282,28 @@ Use these as the expected-value baseline when verifying:
 | `local-agent-mode-sessions` | 548 | 36 MB |
 | `_session_backup_premove` | 24 | 35 MB |
 | `claude-code-sessions` | 127 | 15 MB |
+| **Mirror total** | | **~1.1 GB** |
 
-Total mirrored: ~1.1 GB.
+---
+
+## Known issue — the %APPDATA%\Claude blind spot
+
+A PowerShell session running **inside** a Claude Code conversation cannot
+see `%APPDATA%\Claude` at all — `Test-Path`, `[System.IO.File]::Exists`
+and extended-length paths all return false, while Git Bash reads the same
+files fine. The four Desktop-app paths are therefore skipped when the
+script is run from inside a Claude session.
+
+**Consequence:** run the script from a **normal PowerShell window**, or
+let the nightly task do it. The script's completeness self-check reports
+`complete: false` and lists `appdata_gaps` whenever those paths are
+missing, so a silent hole is not possible.
+
+If a run ever reports gaps, fill them from Git Bash:
+
+```bash
+cp -r "/c/Users/po.nienchen/AppData/Roaming/Claude/claude-code-sessions/." \
+      "/c/claude_backups/mirror/desktop_code_sessions/"
+cp -r "/c/Users/po.nienchen/AppData/Roaming/Claude/local-agent-mode-sessions/." \
+      "/c/claude_backups/mirror/desktop_agent_mode_sessions/"
+```
