@@ -14,10 +14,26 @@ ide/
 
 # --- Per-machine session and history -------------------------
 history.jsonl
-.credentials.json
 .last-update-check
-oauth_account.json
 session-*.json
+
+# --- Auth: bare names are NOT enough -------------------------
+# Claude Code writes credentials atomically (temp file then rename).
+# An interrupted write leaves an orphan like
+# .credentials.json.tmp.54fd5dba holding LIVE OAuth tokens — access
+# and refresh tokens for the account, plus any MCP server tokens
+# (Slack et al). One such orphan was caught staged in the work config
+# on 2026-08-24. Bare ".credentials.json" does not match it.
+.credentials.json
+.credentials.json.*
+*.credentials.json*
+oauth_account.json
+oauth_account.json.*
+.claude.json
+.claude.json.*
+*.tmp.*
+*token*.json
+buddy-tokens.json
 
 # --- Local-only overrides ------------------------------------
 settings.local.json
