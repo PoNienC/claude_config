@@ -7,7 +7,11 @@ repair, a reinstall, or on a brand-new machine.
 - **Backup script:** `~/.claude/tools/claude_backup/backup_claude_data.ps1`
 - **Nightly task:** `claude_data_backup`, 22:00 daily
 - **Personal config repo:** <https://github.com/PoNienC/claude_config>
-- **Work config repo:** local at `~/.claude-work` (add your remote)
+- **Work config repo:** <https://github.com/PoNienC/claude_config_work>
+
+Both repos live under the **PoNienC** account. Two repos rather than one
+because `~/.claude` and `~/.claude-work` are separate directories — a
+single repo cannot be the working tree of both.
 
 ---
 
@@ -108,13 +112,10 @@ Remove-Item "$env:TEMP\claude_config_clone" -Recurse -Force
 **Work** — same shape, into `~/.claude-work`:
 
 ```powershell
-git clone <work-config-repo-url> "$env:TEMP\claude_work_clone"
+git clone https://github.com/PoNienC/claude_config_work.git "$env:TEMP\claude_work_clone"
 robocopy "$env:TEMP\claude_work_clone" "$env:USERPROFILE\.claude-work" /E
 Remove-Item "$env:TEMP\claude_work_clone" -Recurse -Force
 ```
-
-If no work remote exists yet, skip this — step 5 restores
-`work_config` from the mirror instead.
 
 ---
 
@@ -130,7 +131,6 @@ Each mirror folder maps to exactly one destination:
 | `work_projects` | `%USERPROFILE%\.claude-work\projects` |
 | `work_sessions` | `%USERPROFILE%\.claude-work\sessions` |
 | `work_file_history` | `%USERPROFILE%\.claude-work\file-history` |
-| `work_config` | `%USERPROFILE%\.claude-work` |
 | `desktop_code_sessions` | `%APPDATA%\Claude\claude-code-sessions` |
 | `desktop_agent_mode_sessions` | `%APPDATA%\Claude\local-agent-mode-sessions` |
 
@@ -144,7 +144,6 @@ $map = @{
   'work_projects'                   = "$env:USERPROFILE\.claude-work\projects"
   'work_sessions'                   = "$env:USERPROFILE\.claude-work\sessions"
   'work_file_history'               = "$env:USERPROFILE\.claude-work\file-history"
-  'work_config'                     = "$env:USERPROFILE\.claude-work"
   'desktop_code_sessions'           = "$env:APPDATA\Claude\claude-code-sessions"
   'desktop_agent_mode_sessions'     = "$env:APPDATA\Claude\local-agent-mode-sessions"
 }

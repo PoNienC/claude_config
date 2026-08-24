@@ -1,14 +1,18 @@
 <#
 .SYNOPSIS
-    Backs up irreplaceable PERSONAL Claude data to a local second folder.
+    Backs up irreplaceable Claude data (both accounts) to a local folder.
 
 .DESCRIPTION
     Protects against the failure mode that actually happens: the Claude
     Desktop app breaking, a failed repair, or a reinstall wiping data.
 
-    SCOPE: personal account only (~/.claude and %APPDATA%\Claude).
-    The work seat (~/.claude-work) is version-controlled in its own git
-    repo and is deliberately NOT copied here.
+    SCOPE: both accounts.
+      personal  ~/.claude          + %APPDATA%\Claude  (Max seat)
+      work      ~/.claude-work                          (PriorPartners
+                                                         team seat)
+    Config for both lives in git (PoNienC/claude_config and
+    PoNienC/claude_config_work). This tool copies the session data that
+    git deliberately excludes.
 
     Two layers:
       1. mirror\           - additive copy of every at-risk path.
@@ -45,7 +49,7 @@
 
 .EXAMPLE
     .\backup_claude_data.ps1
-    Normal run. First copy is ~670 MB; later runs copy only changes.
+    Normal run. First copy is ~1.1 GB; later runs copy only changes.
 
 .EXAMPLE
     .\backup_claude_data.ps1 -Prune
@@ -84,8 +88,12 @@ $KeepLogs      = 30
 # mistaken for a normal night.
 $ShrinkGuardRatio = 0.5
 
-# --- Bulk data: PERSONAL ONLY ---------------------------------------
+# --- Bulk data: BOTH accounts ---------------------------------------
+# Config (rules, skills, commands, CLAUDE.md) for both accounts lives in
+# git and is not duplicated here. What is copied is the session data git
+# deliberately excludes: transcripts, file history, agent-mode sessions.
 $BulkPaths = @(
+    # --- personal account (~/.claude) ---
     @{ name = 'personal_projects'
        source = Join-Path $userProfile '.claude\projects' }
 
@@ -95,6 +103,17 @@ $BulkPaths = @(
     @{ name = 'personal_session_backup_premove'
        source = Join-Path $userProfile '.claude\_session_backup_premove' }
 
+    # --- work account (~/.claude-work) ---
+    @{ name = 'work_projects'
+       source = Join-Path $userProfile '.claude-work\projects' }
+
+    @{ name = 'work_sessions'
+       source = Join-Path $userProfile '.claude-work\sessions' }
+
+    @{ name = 'work_file_history'
+       source = Join-Path $userProfile '.claude-work\file-history' }
+
+    # --- Claude Desktop app (personal) ---
     @{ name = 'desktop_code_sessions'
        source = Join-Path $appDataClaude 'claude-code-sessions' }
 
@@ -121,6 +140,18 @@ $ConfigFiles = @(
 
     @{ name = 'personal_history.jsonl'
        source = Join-Path $userProfile '.claude\history.jsonl' }
+
+    @{ name = 'work_dot_claude.json'
+       source = Join-Path $userProfile '.claude-work\.claude.json' }
+
+    @{ name = 'work_settings.json'
+       source = Join-Path $userProfile '.claude-work\settings.json' }
+
+    @{ name = 'work_history.jsonl'
+       source = Join-Path $userProfile '.claude-work\history.jsonl' }
+
+    @{ name = 'work_policy_limits.json'
+       source = Join-Path $userProfile '.claude-work\policy-limits.json' }
 )
 
 function Write-Log {
@@ -141,7 +172,7 @@ foreach ($d in @($Destination, $mirrorRoot, $snapshotRoot, $logDir)) {
     if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
 }
 
-Write-Log "Claude data backup starting (personal account only)"
+Write-Log "Claude data backup starting (personal + work accounts)"
 Write-Log "Destination: $Destination"
 if ($ConfigOnly) { Write-Log "Mode: config snapshot only" }
 if ($Prune)      { Write-Log "Mode: PRUNE - stale backup files will be removed" 'WARN' }
@@ -267,7 +298,7 @@ $manifest = [ordered]@{
     backup_completed_at = (Get-Date).ToString('o')
     elapsed_seconds     = [math]::Round($elapsed.TotalSeconds, 1)
     mode                = $mode
-    scope               = 'personal_account_only'
+    scope               = 'personal_and_work'
     destination         = $Destination
     mirror_total_mb     = [math]::Round($totalBytes / 1MB, 1)
     config_snapshot     = $snapshotDir
