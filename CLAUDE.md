@@ -21,18 +21,19 @@
 | ANY SQL/PostGIS work — incl. psql via shell | `~/.claude/rules/sql.md` (paths-gated; Read it explicitly) |
 | GPKG → PostGIS loads | `~/.claude/rules/gpkg_to_postgis.md` |
 | Creating ANY document/deck/deliverable for P+P | `~/.claude/references/prior_partners_brand.md` |
+| Writing a tool brief / tool architecture doc / QA-QC report (PNC dark annex HTML) | `~/.claude/references/pnc_documentation_styles.md` |
 | Producing a diagram-led HTML workflow / PL / process report | invoke skill `pp_workflow_report` (bundled template) |
 | Diagnosing token waste / session slowness | `~/.claude/references/quick_diagnosis_20260704.md` |
 | Continuing the long-term system build | `~/.claude/references/letter_to_future_sessions.md` |
 
 ## Universal rules (always on)
 
-### Reply style
+### Reply style (Po-approved update, 24 Aug 2026)
 - Open EVERY reply with a one-line summary of the result — the outcome,
   not a restatement of the request. One line, before anything else.
-- Body is bullet points by default. Use prose only where a bullet
-  genuinely cannot carry the point (a nuanced trade-off, a caveat that
-  needs a sentence). Never pad.
+- SUPER CONCISE, bullets only, EASY ENGLISH: plain words, short
+  sentences, straight to the point. Use prose only where a bullet
+  genuinely cannot carry the point. Never pad.
 - Applies to every reply in every session, including mid-task progress
   updates and error reports.
 
