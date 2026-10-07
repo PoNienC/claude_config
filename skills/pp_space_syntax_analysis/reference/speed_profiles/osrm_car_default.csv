@@ -1,0 +1,23 @@
+# Free-flow routing default speeds per OSM highway class, in km/h.
+# Source: OSRM car profile, profiles/car.lua "speeds" table,
+# https://github.com/Project-OSRM/osrm-backend/blob/master/profiles/car.lua
+# (read 11 June 2026; latest commit touching the file f7e315e8, 23 May 2026).
+# These are OSRM's conservative free-flow estimates used when a way carries
+# no maxspeed tag — NOT legal speed limits and NOT measured averages.
+# Classes absent from this table (e.g. track, busway, bus_guideway) are
+# excluded from the vehicular graph and reported by the tool.
+highway,speed_kmh,source
+motorway,90,OSRM car.lua speeds table (commit f7e315e8)
+motorway_link,45,OSRM car.lua speeds table (commit f7e315e8)
+trunk,85,OSRM car.lua speeds table (commit f7e315e8)
+trunk_link,40,OSRM car.lua speeds table (commit f7e315e8)
+primary,65,OSRM car.lua speeds table (commit f7e315e8)
+primary_link,30,OSRM car.lua speeds table (commit f7e315e8)
+secondary,55,OSRM car.lua speeds table (commit f7e315e8)
+secondary_link,25,OSRM car.lua speeds table (commit f7e315e8)
+tertiary,40,OSRM car.lua speeds table (commit f7e315e8)
+tertiary_link,20,OSRM car.lua speeds table (commit f7e315e8)
+unclassified,25,OSRM car.lua speeds table (commit f7e315e8)
+residential,25,OSRM car.lua speeds table (commit f7e315e8)
+living_street,10,OSRM car.lua speeds table (commit f7e315e8)
+service,15,OSRM car.lua speeds table (commit f7e315e8)
