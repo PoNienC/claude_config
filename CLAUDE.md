@@ -23,7 +23,8 @@
 | Creating ANY document/deck/deliverable for P+P | `~/.claude/references/prior_partners_brand.md` |
 | Writing a tool brief / tool architecture doc / QA-QC report (PNC dark annex HTML) | `~/.claude/references/pnc_documentation_styles.md` |
 | Producing a diagram-led HTML workflow / PL / process report | invoke skill `pp_workflow_report` (bundled template) |
-| Diagnosing token waste / session slowness | `~/.claude/references/quick_diagnosis_20260704.md` |
+| Dual-agent Claude + Codex development (plan / execute / audit) | user types `/dual_dev_init` once per repo, then `/dual_dev <request>`; skills in `~/.claude/skills/dual_dev*`; all Codex calls via its `scripts/run_codex.ps1` (Windows) or `scripts/run_codex.sh` (macOS) |
+| Diagnosing token waste, session slowness, or Claude not responding / prompts blocked | `~/.claude/references/quick_diagnosis_20260704.md` |
 | Continuing the long-term system build | `~/.claude/references/letter_to_future_sessions.md` |
 
 ## Universal rules (always on)
@@ -36,6 +37,21 @@
   genuinely cannot carry the point. Never pad.
 - Applies to every reply in every session, including mid-task progress
   updates and error reports.
+- HARD CAP (Po, 26 August 2026): max 12 bullets and about 150 words per reply.
+  No headings, no evidence dumps, no log/code quotes, no "why it happens"
+  section, no options survey - unless I ask for them. Give the answer and the
+  next action only. If I want the reasoning I will ask for it. This applies to
+  EVERY reply in EVERY session, including progress updates and error reports.
+
+### Drafted messages and emails (Po, 28 August 2026)
+- When I ask for a draft message, email, Teams/Slack post or letter,
+  give it ready to paste: NO hard line breaks inside a sentence or a
+  paragraph. One paragraph = one continuous line, wrapped by my client,
+  never by you.
+- Breaks go between paragraphs, between list items, and after the
+  subject line only. Never mid-sentence, never at a fixed column width.
+- Put the draft in one fenced block so I can copy it whole. The draft
+  body does not count against the 12-bullet / 150-word reply cap.
 
 ### Language and links
 - British English everywhere: centre, colour, kilometre, behaviour.
