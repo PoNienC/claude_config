@@ -93,6 +93,21 @@ corridors, walkability, massing), `accessibility_equity_auditor`
 proceed with primitive MCP tools and at session end propose what a new
 Skill should encapsulate.
 
+## Gotchas
+
+- **OSMnx 2.x `network_type='walk'` drops walkable streets.** Its filter
+  excludes every way tagged `sidewalk`, `sidewalk:both`, `sidewalk:left`
+  or `sidewalk:right` = `separate`, and every `highway=cycleway` even with
+  `foot=yes`/`designated`. Where the separately drawn footways do not join
+  up (common in London), real walking links vanish and the graph splits
+  into islands. Found 5 October 2026 marking a GIS take-home on the Isle
+  of Dogs: East Ferry Road and Pepper Street missing beside the site
+  (12 walkable ways out of 227 in a 450 × 400 m box), in both the
+  candidate's and the model answer's networks. Fix: `custom_filter`
+  without those clauses (keep `foot!~no`, `access!~private`,
+  `service!~private`), then check the graph against full OSM data or a
+  basemap at street level before trusting any catchment.
+
 ## Backend awareness
 
 `GEOAI_BACKEND` env var: `local` (default), `onprem` (PostGIS, internal

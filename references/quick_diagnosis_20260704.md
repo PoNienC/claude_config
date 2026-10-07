@@ -70,3 +70,56 @@ Long sessions interleave threads (style + runner + release + docs).
 Weak models lose the pending-decision stack. **Fix:** maintain a
 "pending decisions" list at the top of root HANDOVER.md; when the user
 pivots mid-thread, append the parked item there BEFORE switching.
+
+## Break 1 — a failing UserPromptSubmit hook blocks every prompt, silently
+
+> Added 26 August 2026 after the "VS Code Claude is not responding" incident.
+
+**Evidence:** Claude Code in VS Code (work profile
+`C:\Users\po.nienchen\.claude-work`) accepted prompts but never ran. Nothing
+appeared in the chat — no error, no spinner, no reply. The transcript record
+carried `"preventContinuation": true` and:
+
+```
+UserPromptSubmit operation blocked by hook:
+[py -3 "%USERPROFILE%\.claude-work\hooks\reply_style_reminder.py"]:
+python.exe: can't open file '...\Qiddiya D2-3 DMP1\%USERPROFILE%\.claude-work\
+hooks\reply_style_reminder.py': [Errno 2] No such file or directory
+```
+
+**Root cause:** the hook command used `%USERPROFILE%`. Claude Code does NOT
+expand `%VAR%` (cmd.exe syntax) in hook commands on Windows. Python received
+the literal string `%USERPROFILE%\...`, resolved it against the project cwd,
+failed with errno 2 and exited non-zero. A non-zero `UserPromptSubmit` hook
+blocks the prompt by design — so a one-character config fault presents as
+"Claude is broken", not as a hook error. The hook script itself was fine
+(runs, exits 0).
+
+**Fix:**
+1. **Absolute paths in every hook command.** Never `%USERPROFILE%`, never `~`.
+2. **Test the exact command string in a shell before saving it** — pipe
+   `{"prompt":"test"}` into it and check the exit code is 0.
+3. **Restart the session after any hook edit.** Hooks are snapshotted at
+   session start, so a running session keeps the broken one.
+4. **Re-validate the JSON after editing.** `sed` on a Windows path
+   under-escapes backslashes and silently produces invalid JSON; edit
+   settings files with `json.load`/`json.dumps`, not `sed`.
+
+**Diagnostic recipe** (any "Claude not responding" report, ~30 seconds):
+
+```powershell
+# newest transcript in the affected profile, then look for a blocking hook
+Get-ChildItem "$env:USERPROFILE\.claude-work\projects" -Recurse -Filter *.jsonl |
+  Sort-Object LastWriteTime -Descending | Select-Object -First 1 |
+  ForEach-Object { Get-Content $_.FullName -Tail 5 } | Select-String "blocked by hook"
+```
+
+The user's original prompt is preserved verbatim in that record — it is
+blocked, not lost, so it can simply be re-pasted after the fix.
+
+**Status:** fixed 26 August 2026 in
+`C:\Users\po.nienchen\.claude-work\settings.json` (backup:
+`settings_json_backup_260826.bak`). Hook re-tested, exit 0.
+**Still to check:** the main profile's `pre_tool_geoai_validate_crs.py` hook
+uses `${HOME}` — shell-style, so probably fine, but it has NOT been verified
+to expand. Confirm before trusting it.

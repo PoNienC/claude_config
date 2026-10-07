@@ -33,7 +33,7 @@ document.** Use the relevant Anthropic skill (`docx`, `pptx`, `xlsx`,
 | Meeting agenda                        | `P+P Agenda v03.dotx`                    | Word   |
 | Meeting minutes                       | `P+P Minutes v03.dotx`                   | Word   |
 | Programme / Gantt                     | `P+P Programme.xltx`                     | Excel  |
-| Slide deck / presentation             | `PP_Template.pdf` (PowerPoint reference) | PPTX   |
+| Slide deck / presentation             | `PP_Template.pptx` (live PowerPoint template; `PP_Template.pdf` is its reference render) | PPTX   |
 | Long-form report / A4 portrait doc    | `A4_Portrait.pdf` (InDesign layout ref) | —      |
 | Landscape report / A3                 | `A3_Landscape.pdf` (InDesign layout ref) | —      |
 
@@ -244,3 +244,54 @@ Don't invent brand values. Re-read `P+P_Brand Guide_v1.pdf`, inspect the
 relevant template, or ask the user / graphics team. Flag any gap rather
 than guessing — same source-fidelity discipline as the rest of this
 config.
+
+---
+
+## 8. Tooling gotchas
+
+- **Word's PDF and XPS export can swap GT America for Calibri** (found
+  16 September 2026 on Po's laptop). There GT America is installed per
+  user only (HKCU font registry, `%LOCALAPPDATA%\Microsoft\Windows\Fonts`).
+  Word sees the fonts and lays pages out in GT America, but
+  `ExportAsFixedFormat` to PDF (17) and XPS (18) draws Calibri glyphs —
+  including for the untouched `P+P Technical Note v03.dotx`. Proven by
+  matching rendered text widths to Calibri within 0.1 pt. That breaks
+  the Arial-only fallback rule, so:
+  - use such exports for pagination and structure only;
+  - to see the real typeface, render pages with Word COM
+    `ActiveWindow.Panes(1).Pages(i).EnhMetaFileBits` played back to PNG;
+  - warn Po before sending a PDF made on that machine. The likely fix
+    is a machine-wide font install by IT.
+- **PowerPoint's PDF export has the same fault** (checked 19 September
+  2026: `SaveAs` 32 on `PP_Template.pptx` embedded only Calibri).
+  Workaround that keeps the real GT America, verified the same day:
+  PowerPoint COM `PrintOptions.ActivePrinter = "Microsoft Print to PDF"`,
+  `PrintInBackground = 0`, `FitToPage = -1`, then
+  `PrintOut(from, to, "<out.pdf>")` — the file name stops the save
+  dialog. The driver paper is US Letter, so crop the page back to the
+  slide with PyMuPDF `show_pdf_page(clip=...)` (find the slide from a
+  known filled shape). Result: vector, text selectable, four GT America
+  cuts embedded, render matching PowerPoint's own PNG export.
+- **`PP_Template.pptx` facts:** canvas 26.67 x 15 in; layouts Aubergine,
+  White, Cream, Black, Orange; 6 x 6 grid with 0.555 in margins,
+  4.033 in columns, 0.267 in gutters, rows every 2.222 in; content
+  titles 42 pt `+mj-lt`; table headers and keys in capitals, 24 pt
+  `+mj-lt`, with a 1 pt top rule and 0.25 pt row rules; footer
+  "Prior + Partners | date | page" in 16 pt GT America Mono Light. Its
+  date placeholder is an auto-updating field — replace it with fixed
+  text for an issued document.
+- **An empty paragraph after a document's last table** can spill onto a
+  blank final page. Collapse it to a 1 pt exact line.
+- **A table heading kept in a separate table** can strand at a page
+  foot. Set keep-with-next on every paragraph except those in the
+  table's last row.
+- **`P+P Technical Note v03.dotx` embeds a GT America font file**
+  (`word/fonts/font1.odttf`, a `w:embedRegular` entry in
+  `fontTable.xml`, `w:embedTrueTypeFonts` in `settings.xml`). Found
+  23 September 2026 while building a candidate test brief: every
+  document made from the template carries the licensed font. For
+  anything going outside P+P, drop `word/fonts/*` and
+  `word/_rels/fontTable.xml.rels`, remove the `w:embed*` elements and
+  `w:embedTrueTypeFonts`, and set the fonts to Arial (the brand
+  fallback) so Word's PDF export stays faithful. Worked example:
+  `make_base()` in `Documents/08_Personal/Hire/gis_consultant_take_home_test/03_build/build_documents.py`.
