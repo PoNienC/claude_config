@@ -5,6 +5,7 @@
 - Plan source: {{PLAN_SOURCE}}
 - Codex effort: {{EFFORT}}
 - Allocation approved by the user: {{DATE}}
+- Codex tokens so far: {{CODEX_TOKENS}}
 
 | Task | Title | Executor | Reviewer | Depends on | Risk | Status | Commit |
 |---|---|---|---|---|---|---|---|

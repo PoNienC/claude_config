@@ -1,7 +1,7 @@
 ---
 name: dual_dev
 description: Run the dual-agent development workflow — independent Claude and Codex plans, a human plan gate, explicit task allocation, execution with reciprocal Claude/Codex audit, and one local commit per audited task. Only when the user types /dual_dev.
-argument-hint: "[--xhigh] <development request>"
+argument-hint: "[--xhigh] [--model <name>] [--repo <path>] <development request>"
 disable-model-invocation: true
 ---
 
@@ -23,13 +23,22 @@ commit message, no AI credit lines in commits.
   macOS / Linux → `bash <skill dir>/scripts/run_codex.sh` (Bash tool) with
   `--mode --repo --brief --out --effort` in place of the `-Mode -Repo
   -BriefFile -OutFile -Effort` parameters. Same modes, exit codes and output.
-- **Repo root** = `git rev-parse --show-toplevel`.
+- **Repo root** = found in Phase 0 step 1; the session may sit in a parent
+  folder (e.g. the project root, with the repo in `04_Code\<name>`).
+  Every git command therefore uses `git -C "<repo root>"`, and every file
+  path is absolute under the repo root.
 - **Request ID** = `T###_slug`: next number above the highest folder in
   `.ai/tasks/` (start at `T001`), slug = two to four snake_case words.
   **TD** = `.ai/tasks/<request id>/` (use its absolute path in commands).
 - Tasks inside a request: `T01`, `T02`, …
 - **Codex effort** = `high`. Use `xhigh` if the request starts with
   `--xhigh` (strip the flag) or the user asks at any point.
+- **Codex model** = Codex's own default (`model` in `~/.codex/config.toml`,
+  shared with the Codex app); the launcher's OK line shows it as
+  `model=default(<name>)`. Use another model if the request includes
+  `--model <name>` (strip it) or the user asks at a gate: pass
+  `-Model <name>` (Windows) / `--model <name>` (macOS) on every launcher
+  call for that request. Record the model in `REQUEST.md`.
 - **Every Codex call goes through the launcher.** Never call `codex`
   directly and never use the plugin's `/codex:*` commands here — the
   launcher carries the Windows sandbox fix and the read-only/write split.
@@ -42,10 +51,24 @@ commit message, no AI credit lines in commits.
   admin setup). With `"unelevated"`, write mode refuses every command
   ("cannot enforce split writable root sets") or stalls; the launcher
   returns exit 2. PRIORPLAP180 was switched to elevated on 7 October 2026
-  (write inside the repo works, write outside is denied). Whether Codex
+  (write inside the repo works, write outside is denied). The sandbox
+  accounts run as the group `CodexSandboxUsers`: programs installed
+  per-user under `%LOCALAPPDATA%\Programs` (Git, Python) need
+  `icacls "%LOCALAPPDATA%\Programs" /grant "CodexSandboxUsers:(OI)(CI)RX"`
+  run once by the user (done on PRIORPLAP180, 12 October 2026) — without
+  it Codex "cannot read git". `~/.config` stays private; the launcher
+  gives Codex a readable copy of the global git ignore file. Whether Codex
   may execute on the current machine comes from `.ai/PROJECT.md` (see
   Phase 3). After any Codex execute run, always check `git diff` yourself
   — a stalled run can still print "CODEX OK" with nothing changed.
+- **Codex usage:** every launcher run prints a `CODEX USAGE:` line —
+  tokens for that call, and the plan limit % used with its reset time
+  (from the sibling `codex_usage` skill). After each Codex step, tell the
+  user in one line: step, tokens, limit % used. Keep a running total:
+  `Codex tokens so far: <n>` in `REQUEST.md` until `TASKS.md` exists, then
+  in the `TASKS.md` header. If any limit is above 80%, stop before the next
+  Codex call and ask: continue, lower the effort (`medium` / `low`), or
+  pause — never switch to a self-audit.
 - **Git conventions** = `.ai/PROJECT.md` → section "Git conventions"
   (branch pattern, commit format, push policy, pull request rules, GitHub
   account). **Project rules win.** Defaults only where the project has none:
@@ -53,24 +76,44 @@ commit message, no AI credit lines in commits.
   without approval. Slugs use underscores; keep any separator the
   project's pattern fixes (e.g. `feat/<module>-T001_slug`).
 - Never edit the working tree while a Codex job is running.
-- Chat stays short; detail goes into TD files. Whenever you name files:
-  clickable links, plus one code block listing every absolute path.
+- **Review files and links:** chat stays short; the full detail always
+  goes into a Markdown file in TD **before** you ask the user anything
+  (Gate 1 → `COMPARISON.md`, Gate 2 → `ALLOCATION.md`, completion →
+  `TASKS.md` and `AUDIT_LOG.md`). Never ask a gate question before its
+  review file exists and is complete. Every message that refers to these
+  files opens with them as clickable links, then one code block with
+  their absolute paths:
+  - link target = the path **relative to the session's working folder**,
+    forward slashes, spaces written `%20`, e.g.
+    `[COMPARISON.md](04_Code/arcgis_workflows/.ai/tasks/T003_x/COMPARISON.md)`;
+  - only if the file is outside the working folder, use
+    `file:///C:/full/path` (spaces `%20`) instead.
+  Link text is the file name; add "open this first" to the main one.
 
 Launch pattern (fill the placeholders in a template first and save it as the brief):
 
 ```powershell
-& "<skill dir>\scripts\run_codex.ps1" -Mode <plan|audit|execute> -Repo "<repo root>" -BriefFile "<TD>\codex\<step>_brief.md" -OutFile "<TD>\codex\<step>_out.md" -Effort high
+& "<skill dir>\scripts\run_codex.ps1" -Mode <plan|audit|execute> -Repo "<repo root>" -BriefFile "<TD>\codex\<step>_brief.md" -OutFile "<TD>\codex\<step>_out.md" -Effort high [-Model <name>]
 ```
 
 ```bash
-bash "<skill dir>/scripts/run_codex.sh" --mode <plan|audit|execute> --repo "<repo root>" --brief "<TD>/codex/<step>_brief.md" --out "<TD>/codex/<step>_out.md" --effort high
+bash "<skill dir>/scripts/run_codex.sh" --mode <plan|audit|execute> --repo "<repo root>" --brief "<TD>/codex/<step>_brief.md" --out "<TD>/codex/<step>_out.md" --effort high [--model <name>]
 ```
 
 Step names: `plan`, `plan_r2`, `T01_audit_r1`, `T01_exec`, `T01_fix_r1`, `T01_audit_r2`, …
 
 ## Phase 0 — Context
 
-1. Find the repo root. If `AGENTS.md` lacks "Dual-agent development
+1. Find the repo root, in this order:
+   - `--repo <path>` in the request (strip it) → `git -C <path> rev-parse --show-toplevel`;
+   - else `git rev-parse --show-toplevel` from the current folder;
+   - else search down to three levels below the current folder for a
+     `.git` folder or `.git` pointer file (skip `_work*`, `node_modules`,
+     `.venv`, `venv`; listing folders only, never opening data files), and
+     keep the repos whose root `AGENTS.md` contains "Dual-agent development
+     contract". One found → state its path and confirm with the user;
+     several → ask which one (AskUserQuestion); none → stop.
+   If the chosen repo's `AGENTS.md` lacks "Dual-agent development
    contract" or `.ai/` is missing, stop and tell the user to run
    `/dual_dev_init` first.
    The current branch may be an unmerged setup branch (for a pilot). That
@@ -106,25 +149,32 @@ Step names: `plan`, `plan_r2`, `T01_audit_r1`, `T01_exec`, `T01_fix_r1`, `T01_au
    `TD/codex/plan_out.md`.
 5. Write `TD/PLAN_A.md` (your draft unchanged, header line
    `Author: Claude Code`) and `TD/PLAN_B.md` (Codex output unchanged, header
-   line `Author: Codex, effort <effort>`).
+   line `Author: Codex, model <model from the launcher's OK line>, effort <effort>`).
 
 Running both at once keeps independence: neither plan is seen by the other
 agent before both are saved.
 
 ## Phase 2 — Comparison and Gate 1
 
-1. Write `TD/COMPARISON.md`: agreements; a differences table
-   (area | Plan A | Plan B | recommended); trade-offs; ordering and testing
-   differences; risks only one plan found; recommended synthesis with
-   reasons. Judge on merit, not authorship.
-2. Chat: at most six bullets on the key differences, plus links to
-   `PLAN_A.md`, `PLAN_B.md`, `COMPARISON.md`.
+1. Write `TD/COMPARISON.md` from `templates/gate1_comparison.md`, every
+   section filled. It must stand on its own: the user decides from this
+   file alone — full differences table, both task lists side by side,
+   testing compared, one-plan-only risks, and the recommended hybrid as a
+   numbered task list with each task's source. Judge on merit, not
+   authorship.
+2. Chat — **review links first**, per "Review files and links": links to
+   `COMPARISON.md` (open this first), `PLAN_A.md`, `PLAN_B.md`, then the
+   absolute paths in one code block, then at most six bullets on the key
+   differences and your recommendation.
 3. Gate 1 with AskUserQuestion: **A** Claude plan · **B** Codex plan ·
-   **C** Hybrid (your recommended mix, or the user's) · **D** Revise both.
-   Put your recommendation first.
-4. **STOP** until answered. On D: append the revision notes to
-   `REQUEST.md`, then repeat Phase 1 as round 2 (fresh Codex run, step
-   `plan_r2`, `{{REVISION_NOTE}}` = the notes; keep round-1 files).
+   **C** Hybrid (as in `COMPARISON.md`, or the user's mix) · **D** Revise
+   both. Put your recommendation first; each option's description names
+   the section of `COMPARISON.md` that explains it.
+4. **STOP** until answered. Record the decision at the top of
+   `COMPARISON.md` (option, date, the user's words verbatim). On D: append
+   the revision notes to `REQUEST.md`, then repeat Phase 1 as round 2
+   (fresh Codex run, step `plan_r2`, `{{REVISION_NOTE}}` = the notes; keep
+   round-1 files).
 
 ## Phase 3 — Approved plan and Gate 2
 
@@ -137,16 +187,28 @@ agent before both are saved.
    Otherwise recommend an allocation. Give Codex tasks that are independent,
    well scoped, testable and interface-stable — not "a share of the work".
    Never split tightly coupled tasks across agents.
-3. Gate 2 with AskUserQuestion: **A** Claude executes all (default) ·
-   **B** Split as recommended (state it) · **C** Codex executes all ·
-   **D** Custom. In the same call, confirm effort (`high` or `xhigh`).
-   State the Git plan from the Git conventions: the branch name, the
-   commit format, one commit per audited task plus one close-out commit,
-   and the push policy.
-4. **STOP** until answered.
-5. Write `TD/TASKS.md` from `templates/tasks_matrix.md`, and start
+3. Write `TD/ALLOCATION.md` from `templates/gate2_allocation.md`, every
+   section filled, **before** asking: the proposed split with a reason per
+   task, what each option means (who executes, who reviews, estimated
+   Codex calls), the order of work, the Git plan from the Git conventions
+   (branch, commit format, one commit per audited task plus one close-out
+   commit, push policy), cost so far and the current limit %, and the
+   risks of the split. When Codex execution is not available, the file
+   says so and shows option A only.
+4. Chat — **review links first**, per "Review files and links": links to
+   `ALLOCATION.md` (open this first) and `PLAN_APPROVED.md`, then the
+   absolute paths in one code block, then at most six bullets: who does
+   which tasks, and your recommendation.
+5. Gate 2 with AskUserQuestion: **A** Claude executes all (default) ·
+   **B** Split as in `ALLOCATION.md` · **C** Codex executes all ·
+   **D** Custom. In the same call, confirm Codex effort (`high` or
+   `xhigh`) and model (default, or a named one).
+6. **STOP** until answered. Record the decision at the top of
+   `ALLOCATION.md` (option, date, the user's words verbatim; for D, the
+   final per-task split).
+7. Write `TD/TASKS.md` from `templates/tasks_matrix.md`, and start
    `TD/TASK_HANDOVER.md` and `TD/AUDIT_LOG.md` (from `templates/audit_log.md`).
-6. `git switch -c <branch per Git conventions>`. The `.ai/` planning files
+8. `git switch -c <branch per Git conventions>`. The `.ai/` planning files
    ride along in the T01 commit.
 
 ## Phase 4 — Execute, one task at a time, in dependency order
@@ -223,6 +285,7 @@ unrelated changes. Keep the TASKS.md status current.
    Commit, subject `<request id> close-out` in the project's format
    (e.g. `chore: <request id> close-out`).
 4. Chat: tasks done, findings accepted/rejected per agent, remaining risks,
+   total Codex tokens for this request and the current limit % used,
    branch name, links to `TASKS.md` and `AUDIT_LOG.md`.
 5. Ask before any push, pull request or merge.
 6. Before a pull request: run `gh repo view <owner>/<repo>` with the

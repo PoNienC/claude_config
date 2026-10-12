@@ -53,8 +53,16 @@ in that folder. Clone into `~/Developer/` instead.
 
 ### OneDrive: separate git folder (tested 7 October 2026)
 
-1. Ask the user to pause OneDrive sync (taskbar icon → Pause syncing,
-   2 hours) and confirm no other git or editor process is using the repo.
+1. OneDrive pause:
+   - **Existing repo (moving a `.git` folder out):** required. Ask the user
+     to pause OneDrive sync (taskbar icon → Pause syncing → 2 hours) and
+     confirm no other git process is using the repo; wait for the answer.
+   - **New repo (no `.git` yet):** optional. Say in one line that pausing
+     avoids OneDrive locking a file during the first `git add` (that file
+     would just need a retry), then carry on without waiting. If a
+     `git add` hits a locked file, retry it once; if it fails again, ask
+     the user to pause OneDrive.
+   Other Claude sessions editing files is fine — they do not use git.
 2. Before any first commit in a new repo: list the top-level folders with
    their sizes and propose `.gitignore` lines for data and outputs — ask.
 3. Run `git init --separate-git-dir=C:\git\<name>.git` in the folder. For
@@ -63,7 +71,7 @@ in that folder. Clone into `~/Developer/` instead.
 4. `attrib -H C:\git\<name>.git` (a moved `.git` keeps its hidden flag).
 5. Verify: `git rev-parse --absolute-git-dir` prints `C:/git/<name>.git`;
    `git log --oneline -1` and `git status` work.
-6. Tell the user to resume OneDrive sync. Recommend "Always keep on this
+6. If OneDrive was paused, tell the user to resume it. Recommend "Always keep on this
    device" only for small folders — pinning a large data folder
    downloads all of it; ask first.
 7. Record in `.ai/PROJECT.md` → "Git conventions": git folder
@@ -185,6 +193,9 @@ says available for the current machine.
      reviewers first; for a pull request, use the GitHub account found in
      step 3 — switch with `gh auth switch -u <account>` only after telling
      the user, then switch back); or
+   - `/dual_dev` can be started from the project root or any folder up to
+     three levels above the repo; it finds the repo and asks to confirm
+     (or pass `--repo <path>`);
    - for a pilot, run `/dual_dev <request>` straight from the setup branch:
      the request branch stacks on it, and its pull request will include
      the setup commit unless setup merges first.
