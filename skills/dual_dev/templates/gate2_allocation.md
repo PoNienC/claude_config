@@ -50,6 +50,18 @@ On: while Codex audits a block, the next block starts if it does not
 depend on the block under audit. Accepted findings are then fixed at the
 next task boundary. Faster; some rework if the audit finds problems.
 
+## Audit review
+
+Choose one (recommendation: **<option>** — <reason>):
+
+| Option | After each audit |
+|---|---|
+| `auto` (default) | the executor evaluates the findings and fixes the ones it accepts; you read the outcome in `AUDIT_LOG.md` |
+| `ask` | nothing is fixed until you approve; the proposed resolutions are in `AUDIT_LOG.md` first |
+| `ask_high` | stops for you only when an audit has a BLOCKER or HIGH finding; otherwise `auto` |
+
+Expected stops for you with this split: `ask` — <n> (one per audit point); `ask_high` — only where serious findings appear.
+
 ## Codex effort per step
 
 | Step | Effort |

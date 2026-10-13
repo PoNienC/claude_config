@@ -160,10 +160,11 @@ handover the hook stops you; the user then types `/session_handover`.
      several → ask which one (AskUserQuestion); none → stop.
    If the chosen repo's `AGENTS.md` lacks "Dual-agent development
    contract" or `.ai/` is missing, stop and tell the user to run
-   `/dual_dev_init` first. If its contract still says "One commit per
-   audited task", it predates audit modes: tell the user in one line that
-   this skill and the briefs govern, and offer to refresh that section
-   from `templates/agents_contract.md` as the first change on the request
+   `/dual_dev_init` first. If its contract section lacks the line
+   "Audit review (chosen at Gate 2)", it predates the current workflow
+   (audit modes, audit review): tell the user in one line that this skill
+   and the briefs govern, and offer to refresh that section from
+   `templates/agents_contract.md` as the first change on the request
    branch.
    The current branch may be an unmerged setup branch (for a pilot). That
    is allowed: note in `REQUEST.md` that the request branch stacks on it,
@@ -272,13 +273,14 @@ steps 1–5 now) · **D** revise. Record the decision at the top of
    `ALLOCATION.md` (open this first) and `PLAN_APPROVED.md`, then the
    absolute paths in one code block, then at most six bullets: who does
    which tasks, and your recommendation.
-5. Gate 2 with AskUserQuestion: **A** Claude executes all (default) ·
-   **B** Split as in `ALLOCATION.md` · **C** Codex executes all ·
-   **D** Custom. In the same call, ask the audit mode — `per_block`
-   (default), `per_task` or `end`, each with its audit count from
-   `ALLOCATION.md` — and confirm the Codex effort per step (table in
-   `ALLOCATION.md`) and model (default, or a named one), and — for
-   `per_block` — overlap on or off (default off).
+5. Gate 2 with one AskUserQuestion call holding up to four questions:
+   (1) split — **A** Claude executes all (default) · **B** Split as in
+   `ALLOCATION.md` · **C** Codex executes all · **D** Custom;
+   (2) audit mode — `per_block` (default), `per_task` or `end`, each with
+   its audit count, plus overlap on/off for `per_block` (default off);
+   (3) **audit review** — `auto` (default), `ask` or `ask_high` (see
+   Phase 4); recommend `ask` or `ask_high` for High-risk requests;
+   (4) Codex effort per step and model — as in `ALLOCATION.md`, or change.
 6. **STOP** until answered. Record the decision at the top of
    `ALLOCATION.md` (option, date, the user's words verbatim; for D, the
    final per-task split).
@@ -305,8 +307,44 @@ and `TASKS.md`.
 
 Before each task: its dependencies are done and the tree holds no
 unrelated changes. Keep the `TASKS.md` status current
-(Pending → In progress → Done, audit pending → In audit → Corrections →
-Complete).
+(Pending → In progress → Done, audit pending → In audit → Awaiting your
+review → Corrections → Complete).
+
+### Audit review (chosen at Gate 2; recorded in `ALLOCATION.md` and `TASKS.md`)
+
+Who fixes: the reviewer only reads and reports; the **executor** — the
+agent that did the work — evaluates the findings and fixes them.
+
+| Option | After an audit |
+|---|---|
+| `auto` (default) | the executor evaluates every finding and fixes the ones it accepts; you see the outcome in `AUDIT_LOG.md` |
+| `ask` | nothing is fixed until you approve |
+| `ask_high` | as `ask`, but only when the audit has a BLOCKER or HIGH finding; otherwise `auto` |
+
+When the review stops for you:
+
+1. Write the proposals into `AUDIT_LOG.md` under the scope, **before any
+   fix**: each finding with its severity and task, the proposed
+   resolution (ACCEPTED, PARTIALLY_ACCEPTED, REJECTED or DEFERRED), the
+   reason and the planned fix. For a Claude-executed scope these are your
+   evaluations of Codex's findings; for a Codex-executed scope they are
+   your findings with your recommendation (Codex has not seen them yet).
+2. Chat, review links first: `AUDIT_LOG.md` (open this first) and the raw
+   audit output; at most six bullets — counts by severity and anything
+   proposed for rejection or deferral.
+3. AskUserQuestion: **A** approve as proposed · **B** fix everything found
+   · **C** change some (the user names finding IDs and decisions) ·
+   **D** stop here (scope stays "Awaiting your review").
+4. Record the user's decision per finding in `AUDIT_LOG.md` ("Your
+   decision" column). **The user's decision overrides the executor's.**
+5. Fix exactly the approved findings: you for Claude's tasks; for Codex's
+   tasks, one Codex `execute` call whose `{{CORRECTIONS}}` lists the
+   approved findings and says "The user has approved these findings for
+   fixing. Fix each one; if one cannot be fixed, stop and explain why —
+   do not reject it."
+6. The BLOCKER/HIGH re-check (round 2) follows as usual and stops for you
+   again only if it finds something new. In `end` mode, review both
+   audits in one stop.
 
 ### Execute
 
@@ -336,14 +374,17 @@ commit of the scope. Write scope, range and both hashes at the top of the
   launcher pastes the commits and diff into the brief. Copy the
   findings verbatim (each names its task). Evaluate every finding on its
   merits: ACCEPTED, PARTIALLY_ACCEPTED, REJECTED or DEFERRED, with a
-  reason. Fix accepted findings only; re-run the tests of every task in
+  reason. If the audit review calls for it, stop for the user now (see
+  Audit review). Fix accepted (or user-approved) findings only; re-run the tests of every task in
   scope; commit the fixes as one commit. If any BLOCKER or HIGH was
   accepted: Codex audit round 2 at re-check effort, `-DiffRange` = the fix
   commit (`<fix>~1..<fix>`), `{{ROUND_NOTE}}` listing those finding IDs.
 - **Scope executed by Codex → Claude audits:** review
   `git diff <base>..<end>` against each task's acceptance criteria, using
   the audit brief's checklist; record findings in `AUDIT_LOG.md`. Never
-  edit Codex's code yourself. If there are findings: one Codex `execute`
+  edit Codex's code yourself. If the audit review calls for it, stop for
+  the user now and send Codex only the approved findings (see Audit
+  review). Otherwise, if there are findings: one Codex `execute`
   call with `{{CORRECTIONS}}` = "Corrections round <n>. Claude's findings
   for <task IDs> are in `TD/AUDIT_LOG.md` under <scope> round <n>.
   Evaluate each one independently, mark it ACCEPTED, PARTIALLY_ACCEPTED,

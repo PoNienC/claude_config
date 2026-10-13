@@ -42,6 +42,12 @@ Planning never modifies project files. Codex plans in a read-only sandbox.
 - Codex executes → Claude reviews → Codex evaluates each finding → Codex
   fixes accepted findings.
 - Reviewers never silently modify the executor's implementation.
+- Audit review (chosen at Gate 2): `auto` — the executor fixes what it
+  accepts; `ask` — nothing is fixed until the user approves the proposed
+  resolutions; `ask_high` — the user is asked only when there is a
+  BLOCKER or HIGH finding. The user's decision on a finding overrides the
+  executor's; a finding the user approved for fixing is fixed, not
+  rejected — if it cannot be fixed, the executor stops and explains why.
 
 Severity: BLOCKER, HIGH, MEDIUM, LOW, NOTE.
 Resolution: ACCEPTED, PARTIALLY_ACCEPTED, REJECTED, DEFERRED — always with
