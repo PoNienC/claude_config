@@ -20,6 +20,10 @@
     started from the Store pwsh puts the Store folder first on PATH.
 
 .EXAMPLE
+    & run_codex.ps1 -Mode audit -Repo C:\dev\geoai-core -Effort medium -DiffRange 1a2b3c4..5d6e7f8 `
+        -BriefFile ...\codex\B1_audit_r1_brief.md -OutFile ...\codex\B1_audit_r1_out.md
+
+.EXAMPLE
     & run_codex.ps1 -Mode plan -Repo C:\dev\geoai-core `
         -BriefFile C:\dev\geoai-core\.ai\tasks\T001_x\codex\plan_brief.md `
         -OutFile   C:\dev\geoai-core\.ai\tasks\T001_x\codex\plan_raw.md
@@ -32,7 +36,12 @@ param(
     [Parameter(Mandatory)][string]$OutFile,
     [ValidateSet('low', 'medium', 'high', 'xhigh')][string]$Effort = 'high',
     # Empty = the model set in Codex's own config.toml (shared with the Codex app).
-    [ValidatePattern('^$|^[A-Za-z0-9][A-Za-z0-9._:-]*$')][string]$Model = ''
+    [ValidatePattern('^$|^[A-Za-z0-9][A-Za-z0-9._:-]*$')][string]$Model = '',
+    # Audits: paste this range's commits and diff into the brief, so Codex
+    # reviews it directly instead of exploring the repo first.
+    # '<base>..<end>' for committed work, 'HEAD' for uncommitted changes.
+    [ValidatePattern('^$|^[A-Za-z0-9._/~^-]+(\.\.[A-Za-z0-9._/~^-]+)?$')][string]$DiffRange = '',
+    [int]$MaxDiffChars = 150000
 )
 $ErrorActionPreference = 'Stop'
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
@@ -65,6 +74,62 @@ if ($outDir -and -not (Test-Path -LiteralPath $outDir)) {
 if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force }
 
 $brief = Get-Content -LiteralPath $BriefFile -Raw -Encoding UTF8
+
+if ($DiffRange) {
+    # Read git output as UTF-8 so non-ASCII text in the diff survives.
+    $savedConsoleEnc = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    try {
+        $git = @('-C', $Repo, '-c', 'core.quotepath=off')
+        if ($DiffRange -eq 'HEAD') {
+            $commits = '(uncommitted changes)'
+            $stat = (& git @git diff --stat HEAD) -join "`n"
+            $diff = (& git @git diff HEAD) -join "`n"
+            $untracked = (& git @git ls-files --others --exclude-standard) -join "`n"
+            if ($untracked) { $stat += "`n`nUntracked files (open them directly):`n$untracked" }
+        } else {
+            $commits = (& git @git log --oneline $DiffRange) -join "`n"
+            $stat = (& git @git diff --stat $DiffRange) -join "`n"
+            $diff = (& git @git diff $DiffRange) -join "`n"
+        }
+    } finally {
+        [Console]::OutputEncoding = $savedConsoleEnc
+    }
+    $note = ''
+    if ($diff.Length -gt $MaxDiffChars) {
+        $diff = $diff.Substring(0, $MaxDiffChars)
+        $note = "`n`n**Diff truncated at $MaxDiffChars characters.** For files beyond this point, run ``git diff $DiffRange -- <file>``."
+    }
+    $brief += @"
+
+
+## Changes under review — pasted by the launcher
+
+Range: ``$DiffRange``. Review the diff below directly; run git or open files
+only when you need more context, and read files as they are at the end of
+the range (``git show <end>:<path>``), not from the working tree, which may
+already hold later work.
+
+### Commits
+
+~~~~text
+$commits
+~~~~
+
+### Files
+
+~~~~text
+$stat
+~~~~
+
+### Diff
+
+~~~~diff
+$diff
+~~~~$note
+"@
+}
+
 $started = Get-Date
 $savedPath = $env:PATH
 $savedXdg = $env:XDG_CONFIG_HOME

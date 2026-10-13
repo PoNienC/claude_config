@@ -1,7 +1,7 @@
 ---
 name: dual_dev
-description: Run the dual-agent development workflow — independent Claude and Codex plans, a human plan gate, explicit task allocation, execution with reciprocal Claude/Codex audit, and one local commit per audited task. Only when the user types /dual_dev.
-argument-hint: "[--xhigh] [--model <name>] [--repo <path>] <development request>"
+description: Run the dual-agent development workflow — independent Claude and Codex plans (or a light mode where Codex reviews Claude's plan), a human plan gate, explicit task allocation, execution with reciprocal Claude/Codex audit per task, per block or at the end, and local commits. Only when the user types /dual_dev.
+argument-hint: "[--resume <request id>] [--solo_plan] [--xhigh] [--model <name>] [--repo <path>] <development request>"
 disable-model-invocation: true
 ---
 
@@ -21,8 +21,9 @@ commit message, no AI credit lines in commits.
   Templates: `<skill dir>/templates/`. Launcher by OS:
   Windows → `<skill dir>\scripts\run_codex.ps1` (PowerShell tool);
   macOS / Linux → `bash <skill dir>/scripts/run_codex.sh` (Bash tool) with
-  `--mode --repo --brief --out --effort` in place of the `-Mode -Repo
-  -BriefFile -OutFile -Effort` parameters. Same modes, exit codes and output.
+  `--mode --repo --brief --out --effort --model --diff-range` in place of
+  the `-Mode -Repo -BriefFile -OutFile -Effort -Model -DiffRange`
+  parameters. Same modes, exit codes and output.
 - **Repo root** = found in Phase 0 step 1; the session may sit in a parent
   folder (e.g. the project root, with the repo in `04_Code\<name>`).
   Every git command therefore uses `git -C "<repo root>"`, and every file
@@ -31,8 +32,21 @@ commit message, no AI credit lines in commits.
   `.ai/tasks/` (start at `T001`), slug = two to four snake_case words.
   **TD** = `.ai/tasks/<request id>/` (use its absolute path in commands).
 - Tasks inside a request: `T01`, `T02`, …
-- **Codex effort** = `high`. Use `xhigh` if the request starts with
-  `--xhigh` (strip the flag) or the user asks at any point.
+- **Codex effort per step** (pass `-Effort` on every call):
+
+  | Step | Default | With `--xhigh` |
+  |---|---|---|
+  | Plan, plan review | `high` | `xhigh` |
+  | Execute, corrections | `high` | `xhigh` |
+  | Audit round 1 | `medium` | `medium` |
+  | Re-check (round 2) | `low` | `low` |
+
+  Strip `--xhigh` from the request. The user can change any row at Gate 2
+  or at any point; record the table in `ALLOCATION.md` and `TASKS.md`.
+- **Light mode:** `--solo_plan` in the request (strip it) — for small,
+  clear requests. Claude writes the only plan; Codex reviews it instead of
+  planning independently (Phase 1 and Gate 1 below). Suggest it in one
+  line when a request looks small, but only the user switches it on.
 - **Codex model** = Codex's own default (`model` in `~/.codex/config.toml`,
   shared with the Codex app); the launcher's OK line shows it as
   `model=default(<name>)`. Use another model if the request includes
@@ -75,10 +89,14 @@ commit message, no AI credit lines in commits.
   branch `dual_dev/<request id>`, commit `T01 <task title>`, no push
   without approval. Slugs use underscores; keep any separator the
   project's pattern fixes (e.g. `feat/<module>-T001_slug`).
-- Never edit the working tree while a Codex job is running.
+- Never edit the working tree while a Codex `execute` job is running.
+  During a Codex `audit` the tree may change only under overlap (Phase 4):
+  the audit reviews a pasted, committed range and reads files at its end
+  commit, so later work does not disturb it.
 - **Review files and links:** chat stays short; the full detail always
   goes into a Markdown file in TD **before** you ask the user anything
-  (Gate 1 → `COMPARISON.md`, Gate 2 → `ALLOCATION.md`, completion →
+  (Gate 1 → `COMPARISON.md`, or `GATE1_REVIEW.md` in light mode;
+  Gate 2 → `ALLOCATION.md`; completion →
   `TASKS.md` and `AUDIT_LOG.md`). Never ask a gate question before its
   review file exists and is complete. Every message that refers to these
   files opens with them as clickable links, then one code block with
@@ -102,6 +120,33 @@ bash "<skill dir>/scripts/run_codex.sh" --mode <plan|audit|execute> --repo "<rep
 
 Step names: `plan`, `plan_r2`, `T01_audit_r1`, `T01_exec`, `T01_fix_r1`, `T01_audit_r2`, …
 
+## Resuming a request (`--resume <request id>`)
+
+Used by a new session after a handover (see "Context guard" below).
+
+1. Find the repo root (Phase 0 step 1; `--repo` usually given). Read, in
+   this order: the root `HANDOVER.md` if it names this request, then in
+   TD: `REQUEST.md`, the Gate 1 file, `PLAN_APPROVED.md`,
+   `ALLOCATION.md`, `TASKS.md`, `TASK_HANDOVER.md`, `AUDIT_LOG.md`.
+2. Check the repo matches the record: current branch, `git status`, and
+   the last commits against `TASKS.md`. Report any mismatch and ask
+   before going on.
+3. A Codex job started by the old session is not tracked here: if its
+   output file exists, use it; if not and no Codex process is running,
+   re-launch that step.
+4. Chat, review links first: where the request stands in at most six
+   bullets, and the next step. Then continue from that step — a pending
+   gate is asked again; Phase 4 continues with the next task or audit.
+   Never redo finished, committed work. Skip Phases 0–3 otherwise.
+
+## Context guard
+
+A hook tells you when this session's context is 90% full. Then: finish
+the step in hand, make sure `TASKS.md` and `AUDIT_LOG.md` are current,
+run the `session_handover` skill, and give the prompt
+`/dual_dev --resume <request id> --repo "<repo root>"`. At 95% without a
+handover the hook stops you; the user then types `/session_handover`.
+
 ## Phase 0 — Context
 
 1. Find the repo root, in this order:
@@ -115,7 +160,11 @@ Step names: `plan`, `plan_r2`, `T01_audit_r1`, `T01_exec`, `T01_fix_r1`, `T01_au
      several → ask which one (AskUserQuestion); none → stop.
    If the chosen repo's `AGENTS.md` lacks "Dual-agent development
    contract" or `.ai/` is missing, stop and tell the user to run
-   `/dual_dev_init` first.
+   `/dual_dev_init` first. If its contract still says "One commit per
+   audited task", it predates audit modes: tell the user in one line that
+   this skill and the briefs govern, and offer to refresh that section
+   from `templates/agents_contract.md` as the first change on the request
+   branch.
    The current branch may be an unmerged setup branch (for a pilot). That
    is allowed: note in `REQUEST.md` that the request branch stacks on it,
    and warn that its pull request will include the setup commit unless
@@ -154,7 +203,28 @@ Step names: `plan`, `plan_r2`, `T01_audit_r1`, `T01_exec`, `T01_fix_r1`, `T01_au
 Running both at once keeps independence: neither plan is seen by the other
 agent before both are saved.
 
+### Light mode (`--solo_plan`) instead of steps 1–5
+
+1. Write your plan (same sections) to `TD/PLAN_A.md`, header line
+   `Author: Claude Code (light mode)`.
+2. Fill `templates/codex_plan_review_brief.md` → `TD/codex/plan_review_brief.md`;
+   launch Codex, mode `plan`, plan-review effort; wait.
+3. Save Codex's output unchanged as `TD/PLAN_REVIEW.md`, header line
+   `Author: Codex, model <model>, effort <effort>`.
+4. Evaluate every finding on its merits: ACCEPTED, PARTIALLY_ACCEPTED or
+   REJECTED, with a reason. Do not edit `PLAN_A.md` yet — accepted changes
+   go into the Gate 1 file and then into `PLAN_APPROVED.md`.
+5. If Codex says the request needs the full two-plan mode, say so at Gate 1.
+
 ## Phase 2 — Comparison and Gate 1
+
+**Light mode:** write `TD/GATE1_REVIEW.md` from
+`templates/gate1_solo_review.md` (every section filled) instead of
+`COMPARISON.md`; link `GATE1_REVIEW.md` (open this first), `PLAN_A.md`
+and `PLAN_REVIEW.md`; ask **A** approve with the accepted changes ·
+**B** approve as written · **C** switch to full two-plan mode (run Phase 1
+steps 1–5 now) · **D** revise. Record the decision at the top of
+`GATE1_REVIEW.md`. Otherwise:
 
 1. Write `TD/COMPARISON.md` from `templates/gate1_comparison.md`, every
    section filled. It must stand on its own: the user decides from this
@@ -178,7 +248,8 @@ agent before both are saved.
 
 ## Phase 3 — Approved plan and Gate 2
 
-1. Write `TD/PLAN_APPROVED.md`: the source (A, B or hybrid, with the user's
+1. Write `TD/PLAN_APPROVED.md`: the source (A, B or hybrid — or, in light
+   mode, Claude's plan plus the accepted review changes — with the user's
    instructions verbatim), then atomic tasks `T01`… each with objective,
    dependencies, likely files, acceptance criteria, tests and risk level.
 2. Check `.ai/PROJECT.md` for "Codex execution on <this machine>". Not
@@ -190,19 +261,24 @@ agent before both are saved.
 3. Write `TD/ALLOCATION.md` from `templates/gate2_allocation.md`, every
    section filled, **before** asking: the proposed split with a reason per
    task, what each option means (who executes, who reviews, estimated
-   Codex calls), the order of work, the Git plan from the Git conventions
-   (branch, commit format, one commit per audited task plus one close-out
-   commit, push policy), cost so far and the current limit %, and the
-   risks of the split. When Codex execution is not available, the file
-   says so and shows option A only.
+   Codex calls), the **audit mode** (see Phase 4) with the blocks and the
+   audit points it creates, overlap for `per_block` (which blocks could
+   overlap), the Codex effort per step, the order of work, the Git plan from the Git
+   conventions (branch, commit format, when commits happen under the
+   chosen audit mode, one close-out commit, push policy), cost so far and
+   the current limit %, and the risks of the split. When Codex execution
+   is not available, the file says so and shows option A only.
 4. Chat — **review links first**, per "Review files and links": links to
    `ALLOCATION.md` (open this first) and `PLAN_APPROVED.md`, then the
    absolute paths in one code block, then at most six bullets: who does
    which tasks, and your recommendation.
 5. Gate 2 with AskUserQuestion: **A** Claude executes all (default) ·
    **B** Split as in `ALLOCATION.md` · **C** Codex executes all ·
-   **D** Custom. In the same call, confirm Codex effort (`high` or
-   `xhigh`) and model (default, or a named one).
+   **D** Custom. In the same call, ask the audit mode — `per_block`
+   (default), `per_task` or `end`, each with its audit count from
+   `ALLOCATION.md` — and confirm the Codex effort per step (table in
+   `ALLOCATION.md`) and model (default, or a named one), and — for
+   `per_block` — overlap on or off (default off).
 6. **STOP** until answered. Record the decision at the top of
    `ALLOCATION.md` (option, date, the user's words verbatim; for D, the
    final per-task split).
@@ -211,60 +287,111 @@ agent before both are saved.
 8. `git switch -c <branch per Git conventions>`. The `.ai/` planning files
    ride along in the T01 commit.
 
-## Phase 4 — Execute, one task at a time, in dependency order
+## Phase 4 — Execute and audit
 
-Before each task: dependencies are Complete and the tree holds no
-unrelated changes. Keep the TASKS.md status current.
+### Audit mode (chosen at Gate 2; recorded in `ALLOCATION.md` and `TASKS.md`)
 
-### Claude-owned task
+| Mode | Audits happen | Speed | Trade-off |
+|---|---|---|---|
+| `per_task` | after every task | slowest | smallest diffs; a problem is caught before later tasks build on it |
+| `per_block` (default) | once per **block** — a run of consecutive tasks with the same executor | faster | one finding may touch several tasks of the block |
+| `end` | after all tasks: Codex audits every Claude-executed task in one pass while Claude audits every Codex-executed task | fastest | a late finding can force rework across many tasks |
 
-1. Implement only this task. Run the relevant tests.
-2. Append to `TASK_HANDOVER.md`: task, summary, files changed, tests and
-   results, known gaps.
-3. Fill `templates/codex_audit_brief.md` (round 1, `{{ROUND_NOTE}}` empty) →
-   launch Codex, mode `audit`. Wait.
-4. Copy the findings verbatim into `AUDIT_LOG.md`.
-5. Evaluate every finding on its merits. Mark each ACCEPTED,
-   PARTIALLY_ACCEPTED, REJECTED or DEFERRED with a reason.
-6. Fix accepted findings only. Re-run the tests.
-7. If any BLOCKER or HIGH was accepted: Codex audit round 2 with
-   `{{ROUND_NOTE}}` listing those finding IDs to verify. Record it.
-8. Mark Complete and commit.
+Example, `per_block`: T01–T03 Claude → one Codex audit; T04–T05 Codex →
+one Claude audit; T06–T12 Claude → one Codex audit. A block also closes
+after a High-risk task (so it is audited before others build on it) and
+after six tasks. Name blocks B1, B2, … and list them in `ALLOCATION.md`
+and `TASKS.md`.
 
-### Codex-owned task
+Before each task: its dependencies are done and the tree holds no
+unrelated changes. Keep the `TASKS.md` status current
+(Pending → In progress → Done, audit pending → In audit → Corrections →
+Complete).
 
-1. Fill `templates/codex_exec_brief.md` (`{{CORRECTIONS}}` empty) → launch
-   Codex, mode `execute`. Wait.
-2. Put Codex's handover into `TASK_HANDOVER.md`.
-3. Check it yourself: `git status`, full `git diff HEAD`, and run the
-   relevant tests (the sandbox may have blocked some of Codex's).
-4. Review the complete diff against the acceptance criteria, using the
-   audit brief's checklist. Record findings in `AUDIT_LOG.md`. Never edit
-   Codex's code yourself.
-5. If there are findings: fill the exec brief again with `{{CORRECTIONS}}`
-   = "Corrections round <n>. Claude's findings are in `TD/AUDIT_LOG.md`
-   under <task> round <n>. Evaluate each one independently, mark it
-   ACCEPTED, PARTIALLY_ACCEPTED, REJECTED or DEFERRED with a reason, fix
-   only what you accept, then re-run the tests." Launch, mode `execute`.
-   Copy Codex's resolutions into `AUDIT_LOG.md`.
-6. Re-review BLOCKER and HIGH fixes; re-run the tests.
-7. Mark Complete and commit.
+### Execute
+
+- **Claude task:** implement only this task; run its tests; append to
+  `TASK_HANDOVER.md` (summary, files changed, tests and results, known
+  gaps). `per_task`: audit now, then commit. Other modes: commit now
+  (see Commit) and mark "Done, audit pending".
+- **Codex tasks:** `per_task` → one Codex `execute` call per task. Other
+  modes → **one call per block** of consecutive Codex tasks: fill
+  `templates/codex_exec_brief.md` with all the block's task IDs in order
+  (`{{CORRECTIONS}}` empty). After the call: put Codex's handover into
+  `TASK_HANDOVER.md`; check `git status` and the diff yourself; run the
+  tests (the sandbox may have blocked some); commit the block (one commit
+  for the block) and mark its tasks "Done, audit pending".
+
+### Audit (when the mode calls for it)
+
+The **scope** is the tasks being audited; its **range** is
+`<base>..<end>`: the commit before the scope's first task, and the last
+commit of the scope. Write scope, range and both hashes at the top of the
+`AUDIT_LOG.md` section.
+
+- **Scope executed by Claude → Codex audits:** fill
+  `templates/codex_audit_brief.md` (`{{TASK_IDS}}`, `{{AUDIT_RANGE}}`,
+  round 1, `{{ROUND_NOTE}}` empty) → launch Codex, mode `audit`, audit
+  effort, with `-DiffRange <base>..<end>` (`--diff-range` on macOS) so the
+  launcher pastes the commits and diff into the brief. Copy the
+  findings verbatim (each names its task). Evaluate every finding on its
+  merits: ACCEPTED, PARTIALLY_ACCEPTED, REJECTED or DEFERRED, with a
+  reason. Fix accepted findings only; re-run the tests of every task in
+  scope; commit the fixes as one commit. If any BLOCKER or HIGH was
+  accepted: Codex audit round 2 at re-check effort, `-DiffRange` = the fix
+  commit (`<fix>~1..<fix>`), `{{ROUND_NOTE}}` listing those finding IDs.
+- **Scope executed by Codex → Claude audits:** review
+  `git diff <base>..<end>` against each task's acceptance criteria, using
+  the audit brief's checklist; record findings in `AUDIT_LOG.md`. Never
+  edit Codex's code yourself. If there are findings: one Codex `execute`
+  call with `{{CORRECTIONS}}` = "Corrections round <n>. Claude's findings
+  for <task IDs> are in `TD/AUDIT_LOG.md` under <scope> round <n>.
+  Evaluate each one independently, mark it ACCEPTED, PARTIALLY_ACCEPTED,
+  REJECTED or DEFERRED with a reason, fix only what you accept, then
+  re-run the tests." Copy Codex's resolutions into `AUDIT_LOG.md`; check
+  and commit the fixes; re-review BLOCKER and HIGH fixes.
+- **`end` mode:** launch the Codex audit in the background first, then do
+  Claude's audit of the Codex tasks while it runs. Apply corrections one
+  agent at a time (Claude's fixes, then Codex's correction call) — never
+  two agents editing at once.
+- When a scope's audit closes: mark its tasks Complete and record the fix
+  commit in `TASKS.md`.
+
+### Overlap (`per_block` with overlap on)
+
+- After a block is committed and its **Codex** audit is launched in the
+  background, start the next block straight away **only if** that block
+  does not depend on the block under audit (`PLAN_APPROVED.md`
+  dependencies). Otherwise wait for the audit. When Claude audits a Codex
+  block, there is no overlap — Claude finishes the audit first.
+- A Codex `execute` call may run while a Codex audit runs (the audit only
+  reads its pasted, committed range); two `execute` calls never run at
+  once, and Claude never edits while a Codex `execute` runs.
+- When the audit returns with accepted findings: finish the task in
+  progress, commit it, then apply the fixes (fix commit) before the next
+  task. If a fix changes something a later task relied on, re-run that
+  task's tests and note it in `AUDIT_LOG.md`.
 
 ### Limits
 
-- At most two correction rounds per task. Then stop and ask the user.
+- At most two correction rounds per audit scope. Then stop and ask the user.
 - An agent is never the sole reviewer of its own work. If Codex cannot
   run (launcher exit 1 or 2), pause and ask the user — do not self-audit.
 - A Codex job running longer than 30 minutes: tell the user and offer to
   stop it.
 
-### Commit (each Complete task)
+### Commit
 
-- `git status` first. Stage only this task's files and the request's
-  `.ai/` files. Never stage secrets, data dumps or caches.
-- Subject line in the project's commit format (default `T01 <task title>`;
-  for Conventional Commits, e.g. `feat(<module>): <task title> [T01]`).
-  Blank line, then `Request: <request id>; audit log:
+- `git status` first. Stage only the task's (or block's) files and the
+  request's `.ai/` files. Never stage secrets, data dumps or caches.
+- When: `per_task` → one commit per task after its audit. `per_block` /
+  `end` → one commit per Claude task right after its tests, one commit per
+  Codex block after your check, and one commit of audit fixes per scope.
+- Subject in the project's commit format (default `T01 <task title>`;
+  Conventional Commits, e.g. `feat(<module>): <task title> [T01]`; a Codex
+  block `T04-T05 <short title>`; fixes `B1 audit fixes (T01-T03)` or
+  `fix(<module>): audit fixes T01-T03 [B1]`). Blank line, then
+  `Request: <request id>; audit: <done | pending (B1 | end)>; log:
   .ai/tasks/<request id>/AUDIT_LOG.md`. No other trailer lines.
 - Record the short hash in `TASKS.md`.
 
@@ -272,6 +399,7 @@ unrelated changes. Keep the TASKS.md status current.
 
 - Only the request branch, only after the user says yes, never forced
   unless the project allows it and the user approves.
+- Never push commits whose audit is still pending.
 - If the push policy says "push every session", offer a push whenever
   work pauses (end of session, waiting on the user mid-execution) and at
   Phase 5. Otherwise ask only at Phase 5.

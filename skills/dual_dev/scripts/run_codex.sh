@@ -19,12 +19,14 @@
 set -u
 
 usage() {
-    echo "usage: run_codex.sh --mode plan|audit|execute --repo DIR --brief FILE --out FILE [--effort low|medium|high|xhigh] [--model NAME]" >&2
+    echo "usage: run_codex.sh --mode plan|audit|execute --repo DIR --brief FILE --out FILE [--effort low|medium|high|xhigh] [--model NAME] [--diff-range BASE..END|HEAD] [--max-diff-chars N]" >&2
     exit 64
 }
 
 # --model empty = the model set in Codex's own config.toml (shared with the Codex app).
-mode=""; repo=""; brief=""; out=""; effort="high"; model=""
+# --diff-range (audits): paste that range's commits and diff into the brief, so
+# Codex reviews it directly instead of exploring the repo first.
+mode=""; repo=""; brief=""; out=""; effort="high"; model=""; diff_range=""; max_diff_chars=150000
 while [ $# -gt 0 ]; do
     case "$1" in
         --mode)   [ $# -ge 2 ] || usage; mode="$2";   shift 2 ;;
@@ -33,6 +35,8 @@ while [ $# -gt 0 ]; do
         --out)    [ $# -ge 2 ] || usage; out="$2";    shift 2 ;;
         --effort) [ $# -ge 2 ] || usage; effort="$2"; shift 2 ;;
         --model)  [ $# -ge 2 ] || usage; model="$2";  shift 2 ;;
+        --diff-range)     [ $# -ge 2 ] || usage; diff_range="$2";     shift 2 ;;
+        --max-diff-chars) [ $# -ge 2 ] || usage; max_diff_chars="$2"; shift 2 ;;
         *) usage ;;
     esac
 done
@@ -63,15 +67,53 @@ if ! command -v codex >/dev/null 2>&1; then
     exit 1
 fi
 
+if [ -n "$diff_range" ] && ! printf '%s' "$diff_range" | grep -Eq '^[A-Za-z0-9._/~^-]+(\.\.[A-Za-z0-9._/~^-]+)?$'; then
+    echo "Bad diff range: $diff_range" >&2; exit 64
+fi
+case "$max_diff_chars" in ''|*[!0-9]*) usage ;; esac
+
 log="$out.log"
 mkdir -p "$(dirname "$out")"
 rm -f "$out"
 
+# The text sent to Codex: the brief, plus the pasted changes for audits.
+send=$(mktemp "${TMPDIR:-/tmp}/run_codex_brief.XXXXXX")
+trap 'rm -f "$send"' EXIT
+cat "$brief" > "$send"
+if [ -n "$diff_range" ]; then
+    if [ "$diff_range" = "HEAD" ]; then
+        commits="(uncommitted changes)"
+        stat=$(git -C "$repo" -c core.quotepath=off diff --stat HEAD)
+        untracked=$(git -C "$repo" -c core.quotepath=off ls-files --others --exclude-standard)
+        [ -n "$untracked" ] && stat=$(printf '%s\n\nUntracked files (open them directly):\n%s' "$stat" "$untracked")
+        git -C "$repo" -c core.quotepath=off diff HEAD > "$send.diff"
+    else
+        commits=$(git -C "$repo" -c core.quotepath=off log --oneline "$diff_range")
+        stat=$(git -C "$repo" -c core.quotepath=off diff --stat "$diff_range")
+        git -C "$repo" -c core.quotepath=off diff "$diff_range" > "$send.diff"
+    fi
+    note=""
+    if [ "$(wc -c < "$send.diff")" -gt "$max_diff_chars" ]; then
+        note="**Diff truncated at $max_diff_chars characters.** For files beyond this point, run \`git diff $diff_range -- <file>\`."
+    fi
+    {
+        printf '\n\n## Changes under review — pasted by the launcher\n\n'
+        printf 'Range: `%s`. Review the diff below directly; run git or open files\n' "$diff_range"
+        printf 'only when you need more context, and read files as they are at the end of\n'
+        printf 'the range (`git show <end>:<path>`), not from the working tree, which may\n'
+        printf 'already hold later work.\n\n### Commits\n\n~~~~text\n%s\n~~~~\n\n### Files\n\n~~~~text\n%s\n~~~~\n\n### Diff\n\n~~~~diff\n' "$commits" "$stat"
+        head -c "$max_diff_chars" "$send.diff"
+        printf '\n~~~~\n'
+        [ -n "$note" ] && printf '\n%s\n' "$note"
+    } >> "$send"
+    rm -f "$send.diff"
+fi
+
 started=$(date +%s)
 if [ -n "$model" ]; then
-    codex exec --sandbox "$sandbox" -C "$repo" --model "$model" -c "model_reasoning_effort=\"$effort\"" -o "$out" - < "$brief" > "$log" 2>&1
+    codex exec --sandbox "$sandbox" -C "$repo" --model "$model" -c "model_reasoning_effort=\"$effort\"" -o "$out" - < "$send" > "$log" 2>&1
 else
-    codex exec --sandbox "$sandbox" -C "$repo" -c "model_reasoning_effort=\"$effort\"" -o "$out" - < "$brief" > "$log" 2>&1
+    codex exec --sandbox "$sandbox" -C "$repo" -c "model_reasoning_effort=\"$effort\"" -o "$out" - < "$send" > "$log" 2>&1
 fi
 exit_code=$?
 secs=$(( $(date +%s) - started ))

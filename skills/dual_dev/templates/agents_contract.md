@@ -49,7 +49,7 @@ a reason.
 
 Re-review limits: BLOCKER/HIGH → mandatory re-review after the fix;
 MEDIUM → fix plus tests is enough; LOW/NOTE → no second audit. At most two
-correction rounds per task; after that the user breaks the deadlock.
+correction rounds per audit scope; after that the user breaks the deadlock.
 
 ## Task boundaries and Git
 
@@ -60,8 +60,12 @@ no push without approval.
 
 Always:
 
-- One request = one branch. One commit per audited task: execute → test →
-  reciprocal review → corrections → verify → commit → next task.
+- One request = one branch. The user picks the audit mode at Gate 2:
+  `per_task` (audit after every task), `per_block` (audit once per run
+  of consecutive tasks by the same executor) or `end` (audit everything
+  after all tasks). Work is committed per task (or per Codex block) and
+  the audit reviews the commit range; audit fixes get their own commit.
+- Never push commits whose audit is still pending.
 - Push only the request branch, and only with the user's approval. If the
   project requires a push every session, offer it when work pauses.
 - Never push to or merge into the main branch, and never open a pull
