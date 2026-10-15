@@ -13,6 +13,14 @@ Also confirm the audit mode, overlap, audit review, and the effort and models be
 
 Recommendation: **<letter>** — <one-line reason>.
 
+## In short
+
+- **Split:** <who executes which tasks, one line>
+- **Audit mode:** **<mode>** — <one-line reason>
+- **Overlap:** **<on/off>** — <one-line reason>
+- **Audit review:** **<option>** — <one-line reason>
+- **Biggest risk:** <one line>
+
 ## Proposed split (option B)
 
 | Task | Title | Executor | Reviewer | Depends on | Risk | Why this executor |
@@ -29,13 +37,15 @@ Recommendation: **<letter>** — <one-line reason>.
 
 ## Audit mode
 
-Choose one (recommendation: **<mode>** — <reason>):
+- **`per_block` (default):** one audit per block of same-executor tasks.
+- **`per_task`:** one audit after every task. Slowest; smallest diffs.
+- **`end`:** all audits at the hand-off. Fastest; late findings mean wider rework.
 
-| Mode | Audit points for this split | Codex audit calls | Claude audits | Trade-off |
-|---|---|---|---|---|
-| `per_block` (default) | B1 (T01-T03) → Codex · B2 (T04-T05) → Claude · … | | | |
-| `per_task` | after each of the <n> tasks; each task waits for its own audit (the last one's runs during the hand-off) | | | slowest; smallest diffs |
-| `end` | one audit per run of consecutive same-executor tasks, all at the hand-off (one Codex audit if Claude does everything) | | | fastest; late findings mean wider rework |
+| Mode | Audit points for this split | Codex audit calls | Claude audits |
+|---|---|---|---|
+| `per_block` | B1 (T01-T03) → Codex · B2 (T04-T05) → Claude · … | | |
+| `per_task` | after each of the <n> tasks | | |
+| `end` | one per run of consecutive same-executor tasks, all at the hand-off | | |
 
 Blocks under `per_block`:
 
@@ -43,42 +53,18 @@ Blocks under `per_block`:
 |---|---|---|---|---|---|
 | B1 | T01-T03 | Claude | Codex | executor changes next | yes / no — <does the next block depend on B1?> |
 
-## Background audits, hand-off and overlap
+## Overlap
 
-Every audit runs in the background (Codex through the launcher, Claude as
-a subagent), so the chat stays free. You get the **hand-off** — the
-result to review, with `REVIEW.md` — as soon as the last task is
-committed, while the last audits are still running. Audit fixes then
-arrive as new commits on top. **Nothing is pushed until every audit is
-complete.**
-
-Overlap — choose **on** (default) or **off** (recommendation: **<on/off>** — <reason>):
-
-- On: while a block is audited, the next block starts if none of its
-  tasks depends on a block whose audit is still open. Accepted findings
-  are fixed at the next block boundary. Faster; some rework if an audit
-  finds problems.
-- Off: every block waits for its own audit (the last one still runs
-  during the hand-off).
-- `per_task` waits for each audit (the last one runs during the
-  hand-off); `end` audits everything at the hand-off.
+- **On (default):** while a block is audited, the next one starts if it does not depend on it. Faster; some rework if findings appear.
+- **Off:** each block waits for its own audit.
 
 ## Audit review
 
-Choose one (recommendation: **<option>** — <reason>):
+- **`auto` (default):** the executor fixes the findings it accepts; you read the result in `AUDIT_LOG.md`.
+- **`ask`:** nothing is fixed until you approve.
+- **`ask_high`:** stops for you only on a BLOCKER or HIGH finding.
 
-| Option | After each audit |
-|---|---|
-| `auto` (default) | the executor evaluates the findings and fixes the ones it accepts; you read the outcome in `AUDIT_LOG.md` |
-| `ask` | nothing is fixed until you approve; the proposed resolutions are in `AUDIT_LOG.md` first |
-| `ask_high` | stops for you only when an audit has a BLOCKER or HIGH finding; otherwise `auto` |
-
-Expected stops for you with this split: `ask` — <n> (one per audit point); `ask_high` — only where serious findings appear.
-
-Re-checks: at most **one** automatic re-check per audit scope (round 2),
-only after a BLOCKER or HIGH fix, and it reviews only the fix commit. A
-BLOCKER or HIGH found by the re-check always comes to you (fix, reject
-or defer each) — there is no automatic third round.
+Expected stops for you: `ask` — <n> (one per audit point); `ask_high` — only where serious findings appear.
 
 ## Effort and models per step
 
@@ -89,10 +75,6 @@ or defer each) — there is no automatic third round.
 | Audit (round 1) | {{EFFORT_AUDIT}} | {{MODEL}} | subagent, session model |
 | Re-check (round 2, the last) | {{EFFORT_RECHECK}} | {{MODEL}} | subagent, session model |
 
-Claude's audits of Codex work run as a background subagent: slower than
-a Codex audit (about 15–20 minutes against 1–2 in the 15 October 2026
-test) but more thorough, and the chat stays free meanwhile.
-
 ## Order of work
 
 1. B1: T01, T02, T03 — Claude executes, commits each → Codex audits B1 in the background → B2 goes on where it does not depend on B1 → B1 fixes at the next block boundary → commit
@@ -102,8 +84,8 @@ test) but more thorough, and the chat stays free meanwhile.
 ## Git plan
 
 - Branch: `<branch per Git conventions>`
-- Commit format: `<format>` — commits per the audit mode (per task or Codex block, plus one audit-fix commit per audit scope), and one close-out commit
-- Hand-off commit: HEAD at the hand-off; everything after it (audit fixes, changes you ask for) is a new commit — nothing you review is amended
+- Commit format: `<format>` — commits per the audit mode, one audit-fix commit per audit scope, one close-out commit
+- Hand-off commit: HEAD at the hand-off; everything after it is a new commit — nothing you review is amended
 - Push policy: <policy> — never before every audit is complete
 
 ## Cost and time
@@ -115,3 +97,11 @@ test) but more thorough, and the chat stays free meanwhile.
 ## Risks of the split
 
 - <integration points between Claude-owned and Codex-owned tasks, interface assumptions, shared files>
+
+## Detail — how audits run
+
+- **Background:** every audit runs in the background (Codex through the launcher, Claude as a subagent); the chat stays free.
+- **Hand-off early:** you get `REVIEW.md` once the last task is committed, while the last audits still run. Fixes come as new commits on top.
+- **No early push:** nothing is pushed until every audit is complete.
+- **One re-check only:** at most one automatic re-check per scope (round 2), only after a BLOCKER or HIGH fix, on the fix commit only. A BLOCKER or HIGH it finds always comes to you.
+- **Claude audits are slower:** about 15–20 minutes against 1–2 for Codex (15 October 2026 test), but more thorough.

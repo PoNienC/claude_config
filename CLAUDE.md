@@ -53,6 +53,17 @@
 - Put the draft in one fenced block so I can copy it whole. The draft
   body does not count against the 12-bullet / 150-word reply cap.
 
+### Written documents — title first, detail later (Po, 15 October 2026)
+- Applies to every MD, HTML, Word or PDF file you write: reports, model
+  comparisons, audit and review logs, plans, briefs, handovers.
+- Open with "In short": the result and any decision needed, ≤5 lines
+  (unless a skill sets the opening, e.g. pp_workflow_report).
+- Every item in three layers: plain title (≤8 words) → one-line answer
+  → detail below, only if needed. Never detail before its title line.
+- Evidence, logs and long tables go last (HTML: a final "Detail"
+  section or `<details>` fold-outs). Easy English, short sentences.
+- Keep the file's structure, brand and colours: cut words, not sections.
+
 ### Language and links
 - British English everywhere: centre, colour, kilometre, behaviour.
 - Every output the user might open (file, folder, GPKG, report, commit,

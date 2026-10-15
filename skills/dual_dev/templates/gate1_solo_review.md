@@ -14,20 +14,32 @@ plans independently) · **D** Revise.
 
 Recommendation: **<letter>** — <one-line reason>.
 
-## The plan in short
+## In short
 
-<One paragraph: what will be delivered, in how many tasks.>
+- **Delivers:** <one line: what, in how many tasks>
+- **Codex found:** <n> points, <n> accepted
+- **Biggest change:** <one line>
 
-## Codex review — findings and Claude's response
+## Main changes from the review
 
-| ID | Severity | Finding | Claude's response | Change to the plan |
-|---|---|---|---|---|
-| P1 | | | ACCEPTED / PARTIALLY_ACCEPTED / REJECTED | |
+<!-- One block per accepted change, most important first. -->
+
+### 1. <plain title, ≤8 words>
+
+<One line: what changes in the plan and why.>
 
 ## Task list after accepted changes
 
 1. <task> — depends on: —
 
-## Codex's view on full mode
+## Detail
+
+### Codex review — findings and Claude's response
+
+| ID | Severity | Finding | Claude's response | Change to the plan |
+|---|---|---|---|---|
+| P1 | | | ACCEPTED / PARTIALLY_ACCEPTED / REJECTED | |
+
+### Codex's view on full mode
 
 <Codex's one-line answer and Claude's view.>

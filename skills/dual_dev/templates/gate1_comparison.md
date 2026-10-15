@@ -13,37 +13,19 @@ Recommendation: **<letter>** — <one-line reason>.
 
 ## In short
 
-<One paragraph: what both plans would deliver, and the single biggest difference between them.>
+- **Both deliver:** <one line>
+- **Biggest difference:** <one line>
+- **Why the recommendation:** <one line>
 
-## Agreements
+## Key differences
 
-- <points both plans share>
+<!-- One block per difference, most important first. Plain title, one-line answer, detail only if needed. -->
 
-## Differences
+### 1. <plain title, ≤8 words>
 
-| Area | Plan A (Claude) | Plan B (Codex) | Recommended | Why |
-|---|---|---|---|---|
-| | | | | |
+<One line: what differs and which plan is better here.>
 
-## Task lists side by side
-
-| # | Plan A task | Plan B task | Notes |
-|---|---|---|---|
-| 1 | | | |
-
-## Testing compared
-
-| | Plan A | Plan B |
-|---|---|---|
-| What is tested | | |
-| How | | |
-| Gaps | | |
-
-## Risks only one plan found
-
-| Risk | Found by | Severity | Mitigation |
-|---|---|---|---|
-| | | | |
+<Optional detail: at most 3 short lines.>
 
 ## Recommended hybrid (option C)
 
@@ -54,3 +36,35 @@ Numbered tasks, each marked with its source (A, B or new) and its dependencies:
 ## Open questions for you
 
 - <anything either plan could not decide without you>
+
+## Detail
+
+### Agreements
+
+- <points both plans share>
+
+### Differences
+
+| Area | Plan A (Claude) | Plan B (Codex) | Recommended | Why |
+|---|---|---|---|---|
+| | | | | |
+
+### Task lists side by side
+
+| # | Plan A task | Plan B task | Notes |
+|---|---|---|---|
+| 1 | | | |
+
+### Testing compared
+
+| | Plan A | Plan B |
+|---|---|---|
+| What is tested | | |
+| How | | |
+| Gaps | | |
+
+### Risks only one plan found
+
+| Risk | Found by | Severity | Mitigation |
+|---|---|---|---|
+| | | | |

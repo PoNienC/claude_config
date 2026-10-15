@@ -7,6 +7,11 @@
 > `pnc_doc_style_tool_brief.md` · `pnc_doc_style_architecture.md` ·
 > `pnc_doc_style_qaqc_report.md` — Read the matching one BEFORE
 > authoring, and copy the scaffold from the canonical exemplar.
+>
+> Concision (Po, 15 October 2026): the CLAUDE.md rule "Written
+> documents — title first, detail later" applies on top of these specs.
+> Keep the page rhythm (kicker, h1 sentence, lead); in the body, each
+> item is plain title → one line → detail. Cut words, not sections.
 
 ## The three formats
 
