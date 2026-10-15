@@ -6,16 +6,17 @@ Claude Code executed {{TASK_IDS}}. Review them independently and critically.
 ## Rules
 
 - Read only. Do not modify, create or delete any file. Do not fix anything.
-- Review only these changes: range `{{AUDIT_RANGE}}` (one or more commits;
-  `HEAD` means the uncommitted changes). The commits, file list and full
+- Review only these changes: range `{{AUDIT_RANGE}}` (one or more
+  commits). The commits, file list and full
   diff are **pasted at the end of this brief** — start there. Run git or
   open files only for extra context, reading them as they are at the end
   of the range (`git show <end>:<path>`); the working tree may already hold
   later work.
 - Treat changes under `.ai/` as context, not as code to review.
-- You may try read-only test commands (for Python: set
-  `PYTHONDONTWRITEBYTECODE=1` and add `-p no:cacheprovider`). If the sandbox
-  blocks them, say so — the executor runs tests separately.
+- Do not run tests: other work may be under way in the working tree, so
+  results would not reflect this range. The executor's recorded test
+  results (in the handover) are authoritative; a missing test or a
+  doubtful result is a finding.
 
 ## Context
 
@@ -47,7 +48,7 @@ One block per finding, most severe first:
 - Why it matters:
 - Suggested fix:
 Write "None" if there are no findings.
-## Tests run
-Commands and results, or "None run".
+## Checked
+What you verified and how (files read, git commands run).
 
 British English. No preamble.

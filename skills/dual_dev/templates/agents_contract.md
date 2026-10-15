@@ -48,14 +48,20 @@ Planning never modifies project files. Codex plans in a read-only sandbox.
   BLOCKER or HIGH finding. The user's decision on a finding overrides the
   executor's; a finding the user approved for fixing is fixed, not
   rejected — if it cannot be fixed, the executor stops and explains why.
+- Hand-off before audits finish: audits run in the background (Claude's
+  as a read-only subagent) and review committed ranges only. The user
+  gets the result to review as soon as the last task is committed; audit
+  fixes arrive as new commits on top; nothing is pushed until every
+  audit is complete.
 
 Severity: BLOCKER, HIGH, MEDIUM, LOW, NOTE.
 Resolution: ACCEPTED, PARTIALLY_ACCEPTED, REJECTED, DEFERRED — always with
 a reason.
 
-Re-review limits: BLOCKER/HIGH → mandatory re-review after the fix;
-MEDIUM → fix plus tests is enough; LOW/NOTE → no second audit. At most two
-correction rounds per audit scope; after that the user breaks the deadlock.
+Re-review limits: BLOCKER/HIGH → one re-review of the fix commit;
+MEDIUM → fix plus tests is enough; LOW/NOTE → no second audit. A BLOCKER
+or HIGH found by the re-review goes to the user — there is no automatic
+third round.
 
 ## Task boundaries and Git
 
@@ -71,12 +77,16 @@ Always:
   of consecutive tasks by the same executor) or `end` (audit everything
   after all tasks). Work is committed per task (or per Codex block) and
   the audit reviews the commit range; audit fixes get their own commit.
-- Never push commits whose audit is still pending.
+- Never push while any audit or re-check is still open.
 - Push only the request branch, and only with the user's approval. If the
-  project requires a push every session, offer it when work pauses.
+  project requires a push every session, offer it when work pauses with
+  every audit complete.
 - Never push to or merge into the main branch, and never open a pull
   request, without the user's explicit approval.
 - The two agents never edit the same working tree at the same time.
+  The one exception: while Codex executes, Claude may update its `.ai/`
+  bookkeeping files (Codex never edits `.ai/`), but commits nothing
+  until Codex has finished.
 - No AI-agent credit lines in commit messages.
 
 ## Shared state (in the repository, not in agent memory)
@@ -87,8 +97,9 @@ Always:
 - `.ai/DECISIONS.md` — material architectural decisions, newest first.
 - `.ai/tasks/T###_slug/` — one folder per request: `REQUEST.md`,
   `PLAN_A.md` (Claude), `PLAN_B.md` (Codex), `COMPARISON.md`,
-  `PLAN_APPROVED.md`, `TASKS.md`, `TASK_HANDOVER.md`, `AUDIT_LOG.md`, and
-  `codex/` (briefs and raw Codex output).
+  `PLAN_APPROVED.md`, `TASKS.md`, `TASK_HANDOVER.md`, `AUDIT_LOG.md`,
+  `REVIEW.md` (the hand-off review), `codex/` (briefs and raw Codex
+  output) and `subagent/` (reports of Claude's audit subagent).
 
 Git history remains the authoritative implementation history. A root
 `HANDOVER.md`, if present, is a personal note and not part of this contract.

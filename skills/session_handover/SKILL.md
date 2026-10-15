@@ -13,8 +13,10 @@ conversation. Keep it fast — the context is nearly full.
 - Finish only the atomic step in hand: no half-written file, no
   half-applied edit, no uncommitted half of a two-part change.
 - Start nothing new. Do not launch new Codex jobs or long commands.
-- A background job still running (Codex, tests, a server): do not wait
-  more than a minute. Record its output file or log path instead.
+- A background job still running (Codex, an audit subagent, tests, a
+  server): do not wait more than a minute. Record its output file or log
+  path instead. An audit subagent cannot be reached from the next
+  session: if its report is not saved yet, the next session re-runs it.
 
 ## 2. Where the handover goes
 
@@ -37,9 +39,11 @@ conversation. Keep it fast — the context is nearly full.
    step, branch, `git status` summary), blocked (and on what).
 3. **`/dual_dev` request**, if one is active — request ID, repo root,
    phase or gate, current task or block, audit mode, links to
-   `TASKS.md`, `AUDIT_LOG.md`, `ALLOCATION.md` / `COMPARISON.md`; any
-   Codex job still running and its output file. Make sure `TASKS.md` and
-   `AUDIT_LOG.md` are current before writing this.
+   `TASKS.md`, `AUDIT_LOG.md`, `ALLOCATION.md` / `COMPARISON.md`, and
+   `REVIEW.md` once it exists; every background audit still running
+   (Codex job or audit subagent) with its output file. Make sure
+   `TASKS.md` (including "Running now") and `AUDIT_LOG.md` are current
+   before writing this.
 4. **Next actions** — ordered, concrete, first one doable immediately.
 5. **Facts learnt this session** — paths, commands, gotchas the next
    session would otherwise rediscover. Durable lessons also go to memory
