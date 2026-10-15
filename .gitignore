@@ -104,3 +104,9 @@ session-env/
 session_index/
 __pycache__/
 *.pyc
+
+# --- Live session handovers (13 October 2026): personal, machine-local ---
+handovers/
+
+# --- Claude Code runtime state (15 October 2026): machine-local ---
+state/
