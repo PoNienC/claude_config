@@ -107,6 +107,24 @@ Skill should encapsulate.
   without those clauses (keep `foot!~no`, `access!~private`,
   `service!~private`), then check the graph against full OSM data or a
   basemap at street level before trusting any catchment.
+- **Reading raster statistics writes a file next to the source.**
+  `band.ComputeStatistics()`, `GetStatistics(…, force)` and
+  `gdalinfo -stats` make GDAL's PAM write `<raster>.aux.xml` beside the
+  raster. Found 14 October 2026 reviewing the shared slope tool: a
+  metadata probe wrote 9 sidecars onto the PP-Team share (now G:)
+  although Po had asked for read-only access (a critic subagent then
+  did the same to a project copy). Fix: set `GDAL_PAM_ENABLED=NO` (env var or
+  `gdal.SetConfigOption`) before opening rasters on a share, or take
+  stats from `ReadAsArray()`, or copy the file first — and put the same
+  line in every subagent brief that touches shared rasters. If a write
+  slips through, report it and let Po decide; never delete on the share.
+- **A PyQGIS `QgsProcessingProvider` must keep Python references to its
+  algorithms** (`self._algs = [Alg()]` then `addAlgorithm` each), or
+  `processing.run` fails with "Error creating algorithm from
+  createInstance()". Found 14 October 2026 (QGIS 4.2.2 headless runner).
+- **`gdal:polygonize` appends to an existing GeoPackage layer**, so a
+  re-run to the same path silently doubles the features. Delete the
+  output first. Found 14 October 2026 (counts doubled: 37,702 → 75,404).
 
 ## Backend awareness
 

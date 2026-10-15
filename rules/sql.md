@@ -540,7 +540,7 @@ forms**, all generated from the database's own metadata. **Whenever a layer is
 loaded, renamed, re-commented, dropped, or otherwise changed in `uk_baseline`,
 the change is NOT finished until all three are refreshed:**
 
-1. **Excel** — `P:\0_Practice\10_Data management resources\04_Spreadsheets\uk_baseline_catalogue.xlsx`
+1. **Excel** — `G:\0_Practice\10_Data management resources\04_Spreadsheets\uk_baseline_catalogue.xlsx`
 2. **Standalone HTML** — `…\04_Spreadsheets\uk_baseline_catalogue.html`
 3. **Live site (GitHub Pages)** — https://prior-partners.github.io/PP_uk_baseline/
    (repo `Prior-Partners/PP_uk_baseline`)
@@ -549,7 +549,7 @@ Refresh procedure, run from the uk_baseline working dir
 (`…\Documents\03_Data_Management\uk_baseline`):
 
 ```bash
-python scripts/catalogue/build_catalogue.py            # regenerates Excel + HTML (P: share) + MkDocs docs/
+python scripts/catalogue/build_catalogue.py            # regenerates Excel + HTML (G: share) + MkDocs docs/
 git -C catalogue add -A && git -C catalogue commit -m "Refresh catalogue: <what changed>"
 cd catalogue && python -m mkdocs gh-deploy             # publish the live site — run FROM catalogue/
 ```

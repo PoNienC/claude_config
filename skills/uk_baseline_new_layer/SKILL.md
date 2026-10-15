@@ -99,7 +99,7 @@ run, build the report — and stop at it.
 
 Run `python scripts/preflight.py` from the repository. It checks Python,
 psycopg, `ogr2ogr`, the database connection, whether the caller really holds
-CREATE on `uk_new`, git, `gh`, and the register on P:. If anything fails, tell
+CREATE on `uk_new`, git, `gh`, and the register on G:. If anything fails, tell
 the loader to run `setup.bat` (which installs the lot and signs them in to
 GitHub) and point at `docs/user_setup_and_run.md` — do not try to hand-fix
 their machine.
@@ -135,7 +135,7 @@ table is promoted under the corrected name in Phase B.
 
 - Check the register first — is this dataset, or an older edition, already
   loaded?
-  `P:\0_Practice\10_Data management resources\04_Spreadsheets\DI\uk_baseline_data_register.xlsx`
+  `G:\0_Practice\10_Data management resources\04_Spreadsheets\DI\uk_baseline_data_register.xlsx`
 - Assign one of the twelve theme codes and build the name to the standard in
   `docs/naming_standard.md`. Never invent a code or a shape.
 - Draft the register row now; it is completed in Phase B.
@@ -569,4 +569,4 @@ produced.
 | Register field guide | `docs/data_register_guide.md` |
 | Manual route (no Claude) | `docs/manual_import_qgis_db_manager.md` |
 | The eleven-step guide, in full | `reference/new_layer_ingestion_guide.md` |
-| Data register | `P:\0_Practice\10_Data management resources\04_Spreadsheets\DI\uk_baseline_data_register.xlsx` |
+| Data register | `G:\0_Practice\10_Data management resources\04_Spreadsheets\DI\uk_baseline_data_register.xlsx` |

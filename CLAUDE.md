@@ -76,7 +76,7 @@
 ### Claude config location
 - All Claude config (`.claude/` — settings, rules, skills, agents,
   memory, hooks, launch.json) lives ONLY in the local profile
-  `C:\Users\<user>\.claude\`. Never on network/shared drives (P:, N:)
+  `C:\Users\<user>\.claude\`. Never on network/shared drives (G:, N:, E:)
   and never inside OneDrive-synced project folders. Project data and
   tools MAY live on shares; Claude config never does.
 
