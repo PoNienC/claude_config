@@ -546,15 +546,40 @@ the change is NOT finished until all three are refreshed:**
    (repo `Prior-Partners/PP_uk_baseline`)
 
 Refresh procedure, run from the uk_baseline working dir
-(`…\Documents\03_Data_Management\uk_baseline`):
+(`…\Documents\03_Data_Management\uk_baseline`). The preview map comes from the
+style registry, so a new or restyled layer first needs its style decision and a
+registry rebuild (`C:\dev\uk_baseline_phase2\style_maplibre_build.py`; never edit
+`styles/uk_baseline_style_registry.json` by hand).
 
 ```bash
+python scripts/catalogue/preview_meta.py               # read-only: keys, extents, comment text the map prints
+# PowerShell — QGIS 4.2.2 Python; table substrings, or --all (all 183 take ~1.5 h)
+& "C:\Program Files\QGIS 4.2.2\bin\python-qgis.bat" scripts\catalogue\build_previews_qgis.py <table>
+python scripts/catalogue/install_previews.py --apply   # staged PNG -> catalogue/docs/maps (dry run without --apply)
 python scripts/catalogue/build_catalogue.py            # regenerates Excel + HTML (G: share) + MkDocs docs/
 git -C catalogue add -A && git -C catalogue commit -m "Refresh catalogue: <what changed>"
-cd catalogue && python -m mkdocs gh-deploy             # publish the live site — run FROM catalogue/
+cd catalogue && python -m mkdocs gh-deploy             # publish the live site — run FROM catalogue/, after the owner's OK
 ```
 
 Notes:
+- **Maps first.** A layer page shows a map only if `catalogue/docs/maps/<table>.png`
+  exists when `build_catalogue.py` runs. Skipping the map step left 42 layers
+  without a map from 10 June to 15 October 2026. Check the staged PNG
+  (`C:\dev\catalogue_previews_qgis\<table>.png`, `render_report.json`) before installing.
+- **QGIS previews since 16 October 2026.** `build_previews_qgis.py` draws each layer
+  only from the registry, in the A4 announcement layout. Fine, dense or sparse
+  layers get a close-up from `LOCAL_FRAMES` (basemap: water, roads, railways, town
+  names, UK inset): pick the place by counting features at least 6 px across, or
+  distinct names, not rows. Northern Ireland close-ups get no basemap and
+  Scotland ones no town names (OS data is GB only; built-up areas England and Wales).
+- **`build_maps.py` is retired for catalogue maps** (folium). It still writes the
+  Dashboard's shared styles JSON on G:, but it also overwrites
+  `catalogue/docs/maps/<table>.png` — if a Dashboard entry is needed, run it
+  BEFORE `install_previews.py --apply`, so the QGIS preview is what stays.
+- **Live audit after every deploy**: every layer page and map returns 200 and each
+  live PNG is byte-identical to `catalogue/docs/maps` (method:
+  `reviews/catalogue_site_audit_261016.md`). Wait until the GitHub Pages build
+  reports `built` for the new gh-pages commit.
 - **Close the Excel file first**, or the `.xlsx` rebuild is skipped (file lock).
 - The generator reads the live DB and **preserves the hand-edited "About & how
   to use" sheet** — it rebuilds only the Layers + Columns sheets.
@@ -563,7 +588,7 @@ Notes:
 - One regeneration covers all three outputs; the same step also picks up new
   columns (e.g. a surrogate `gid` PK) on changed layers.
 
-Established 2026-06-01.
+Established 2026-06-01. Map step changed to the QGIS previews 2026-10-16.
 
 ## Migration discipline
 - DDL changes in versioned migration files only. No ad-hoc `ALTER TABLE` in analysis scripts.
