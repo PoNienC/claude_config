@@ -109,6 +109,11 @@
   `HANDOVER_PP_Claude_Introduction_260714.md`) — do not re-read them
   for routine session starts.
 
+### Headless browser runs (Po, 16 October 2026)
+- Any script that starts Edge or Chrome with `--user-data-dir` must, when
+  it ends, close every browser process using that profile and delete the
+  profile folder. Never leave profiles in %TEMP%.
+
 ### CRS hard rules (full doctrine: references/geoai_operating.md)
 - Unknown inputs are EPSG:4326 until inspection proves otherwise.
 - Working CRS: UK → 27700; W Europe → 3035; CONUS → 5070; global area →
