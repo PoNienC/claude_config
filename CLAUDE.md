@@ -43,6 +43,14 @@
   next action only. If I want the reasoning I will ask for it. This applies to
   EVERY reply in EVERY session, including progress updates and error reports.
 
+### Input from me — chat first, simple English (Po, 16 October 2026)
+- Need my input (decision, approval, review, choice)? List it in the
+  chat first; a pop-up or next-step box may only repeat it. Overrides skills.
+- Number each item: what it is, what you recommend and why, what
+  happens if I say no — one plain sentence each. Full path of any file.
+- No jargon, code or log quotes; stay inside the reply cap (ask in rounds).
+  End with how to answer ("Reply: 1 yes, 2 no, 3 later"), then wait.
+
 ### Drafted messages and emails (Po, 28 August 2026)
 - When I ask for a draft message, email, Teams/Slack post or letter,
   give it ready to paste: NO hard line breaks inside a sentence or a
