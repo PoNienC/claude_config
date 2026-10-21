@@ -60,6 +60,11 @@
   subject line only. Never mid-sentence, never at a fixed column width.
 - Put the draft in one fenced block so I can copy it whole. The draft
   body does not count against the 12-bullet / 150-word reply cap.
+- Emails (Po, 21 October 2026): EVERY time I ask you to write, reply to or
+  refine an email, run the skill `email_dual_draft` — you and Codex each
+  draft, each reviews the other's draft, you merge. Give me only the final
+  email plus at most four short bullets: highlights, what was merged, main
+  review fix, anything to check.
 
 ### Written documents — title first, detail later (Po, 15 October 2026)
 - Applies to every MD, HTML, Word or PDF file you write: reports, model
