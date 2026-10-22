@@ -1,7 +1,7 @@
 ---
 name: dual_dev
 description: Run the dual-agent development workflow — independent Claude and Codex plans (or a light mode where Codex reviews Claude's plan), a human plan gate, explicit task allocation, execution with reciprocal Claude/Codex audit per task, per block or at the end, audits in the background with an early hand-off, and local commits. Only when the user types /dual_dev.
-argument-hint: "[--resume <request id>] [--solo_plan] [--xhigh] [--model <name>] [--repo <path>] <development request>"
+argument-hint: "[--resume <request id>] [--plan <path>] [--solo_plan] [--xhigh] [--model <name>] [--repo <path>] <development request>"
 disable-model-invocation: true
 ---
 
@@ -43,6 +43,14 @@ commit message, no AI credit lines in commits.
 
   Strip `--xhigh` from the request. The user can change any row at Gate 2
   or at any point; record the table in `ALLOCATION.md` and `TASKS.md`.
+- **Approved plan from /dual_plan:** `--plan <path>` in the request (strip
+  it) names a `PLAN.md` written by the `dual_plan` skill and approved by
+  the user (its "Decision" line is filled). Phases 1 and 2 are then
+  skipped: Phase 0 runs as usual, Phase 3 starts from that file (copy it
+  into TD as `PLAN_APPROVED.md` with the source line "dual_plan, merged
+  from Claude and Codex, approved <date>"; copy its `PLAN_A.md`,
+  `PLAN_B.md` and `context_pack.md` into TD too). If the Decision line
+  is still pending, stop and ask the user to approve the plan first.
 - **Light mode:** `--solo_plan` in the request (strip it) — for small,
   clear requests. Claude writes the only plan; Codex reviews it instead of
   planning independently (Phase 1 and Gate 1 below). Suggest it in one
