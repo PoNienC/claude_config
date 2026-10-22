@@ -81,16 +81,18 @@ send=$(mktemp "${TMPDIR:-/tmp}/run_codex_brief.XXXXXX")
 trap 'rm -f "$send"' EXIT
 cat "$brief" > "$send"
 if [ -n "$diff_range" ]; then
+    # The .ai/ records (plans, task matrix, audit log) are context, not code:
+    # leave them out so they never crowd the code out of the paste limit.
     if [ "$diff_range" = "HEAD" ]; then
         commits="(uncommitted changes)"
-        stat=$(git -C "$repo" -c core.quotepath=off diff --stat HEAD)
-        untracked=$(git -C "$repo" -c core.quotepath=off ls-files --others --exclude-standard)
+        stat=$(git -C "$repo" -c core.quotepath=off diff --stat HEAD -- . ':(exclude).ai')
+        untracked=$(git -C "$repo" -c core.quotepath=off ls-files --others --exclude-standard -- . ':(exclude).ai')
         [ -n "$untracked" ] && stat=$(printf '%s\n\nUntracked files (open them directly):\n%s' "$stat" "$untracked")
-        git -C "$repo" -c core.quotepath=off diff HEAD > "$send.diff"
+        git -C "$repo" -c core.quotepath=off diff HEAD -- . ':(exclude).ai' > "$send.diff"
     else
         commits=$(git -C "$repo" -c core.quotepath=off log --oneline "$diff_range")
-        stat=$(git -C "$repo" -c core.quotepath=off diff --stat "$diff_range")
-        git -C "$repo" -c core.quotepath=off diff "$diff_range" > "$send.diff"
+        stat=$(git -C "$repo" -c core.quotepath=off diff --stat "$diff_range" -- . ':(exclude).ai')
+        git -C "$repo" -c core.quotepath=off diff "$diff_range" -- . ':(exclude).ai' > "$send.diff"
     fi
     note=""
     if [ "$(wc -c < "$send.diff")" -gt "$max_diff_chars" ]; then
@@ -98,10 +100,11 @@ if [ -n "$diff_range" ]; then
     fi
     {
         printf '\n\n## Changes under review — pasted by the launcher\n\n'
-        printf 'Range: `%s`. Review the diff below directly; run git or open files\n' "$diff_range"
-        printf 'only when you need more context, and read files as they are at the end of\n'
-        printf 'the range (`git show <end>:<path>`), not from the working tree, which may\n'
-        printf 'already hold later work.\n\n### Commits\n\n~~~~text\n%s\n~~~~\n\n### Files\n\n~~~~text\n%s\n~~~~\n\n### Diff\n\n~~~~diff\n' "$commits" "$stat"
+        printf 'Range: `%s` (changes under `.ai/` left out — they are records, not\n' "$diff_range"
+        printf 'code). Review the diff below directly; run git or open files only when you\n'
+        printf 'need more context, and read files as they are at the end of the range\n'
+        printf '(`git show <end>:<path>`), not from the working tree, which may already\n'
+        printf 'hold later work.\n\n### Commits\n\n~~~~text\n%s\n~~~~\n\n### Files\n\n~~~~text\n%s\n~~~~\n\n### Diff\n\n~~~~diff\n' "$commits" "$stat"
         head -c "$max_diff_chars" "$send.diff"
         printf '\n~~~~\n'
         [ -n "$note" ] && printf '\n%s\n' "$note"
@@ -147,7 +150,14 @@ fi
 #   CreateProcessAsUserW,
 #   UnsupportedOperation,
 #   refusing to run unsandboxed - Windows (see run_codex.ps1)
-if grep -Eq 'sandbox_apply|CreateProcessAsUserW|UnsupportedOperation|refusing to run unsandboxed' "$out" "$log"; then
+# A marker that already appears in the brief (e.g. when this launcher is itself
+# under review) is echoed in the log and the reply, so it is ignored.
+pattern=""
+for m in sandbox_apply CreateProcessAsUserW UnsupportedOperation 'refusing to run unsandboxed'; do
+    grep -Fq "$m" "$send" 2>/dev/null && continue
+    pattern="${pattern:+$pattern|}$m"
+done
+if [ -n "$pattern" ] && grep -Eq "$pattern" "$out" "$log"; then
     echo "CODEX DEGRADED: Codex could not run shell commands (sandbox). Treat the output as untrustworthy."
     echo "$usage_line"
     echo "Output: $out"

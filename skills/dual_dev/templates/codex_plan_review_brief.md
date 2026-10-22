@@ -12,11 +12,17 @@ critical — do not assume the plan is right.
 
 ## Read
 
-1. `AGENTS.md`, `.ai/PROJECT.md`, `.ai/STATE.md`, `.ai/DECISIONS.md`
-2. `{{TASK_DIR}}/REQUEST.md`
-3. Claude's plan: `{{TASK_DIR}}/PLAN_A.md`
-4. The source code and tests the plan touches — check its claims against
-   the repository.
+**Everything you need is pasted at the end of this brief** — the repo
+tree, `AGENTS.md`, `.ai/PROJECT.md`, `.ai/STATE.md`, `.ai/DECISIONS.md` and
+the source and tests the plan touches, in full. Read these two files
+from the repository, then check the plan's claims against the pack:
+
+1. `{{TASK_DIR}}/REQUEST.md`
+2. Claude's plan: `{{TASK_DIR}}/PLAN_A.md`
+
+Run any other command only if a file you truly need is missing from the
+pack, then read only that file; do not explore the repository folder by
+folder. Say "not in the pack" rather than guessing.
 
 ## Check
 

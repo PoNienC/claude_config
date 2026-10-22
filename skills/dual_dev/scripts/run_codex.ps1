@@ -81,16 +81,19 @@ if ($DiffRange) {
     [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
     try {
         $git = @('-C', $Repo, '-c', 'core.quotepath=off')
+        # The .ai/ records (plans, task matrix, audit log) are context, not code:
+        # leave them out so they never crowd the code out of the paste limit.
+        $scope = @('--', '.', ':(exclude).ai')
         if ($DiffRange -eq 'HEAD') {
             $commits = '(uncommitted changes)'
-            $stat = (& git @git diff --stat HEAD) -join "`n"
-            $diff = (& git @git diff HEAD) -join "`n"
-            $untracked = (& git @git ls-files --others --exclude-standard) -join "`n"
+            $stat = (& git @git diff --stat HEAD @scope) -join "`n"
+            $diff = (& git @git diff HEAD @scope) -join "`n"
+            $untracked = (& git @git ls-files --others --exclude-standard @scope) -join "`n"
             if ($untracked) { $stat += "`n`nUntracked files (open them directly):`n$untracked" }
         } else {
             $commits = (& git @git log --oneline $DiffRange) -join "`n"
-            $stat = (& git @git diff --stat $DiffRange) -join "`n"
-            $diff = (& git @git diff $DiffRange) -join "`n"
+            $stat = (& git @git diff --stat $DiffRange @scope) -join "`n"
+            $diff = (& git @git diff $DiffRange @scope) -join "`n"
         }
     } finally {
         [Console]::OutputEncoding = $savedConsoleEnc
@@ -105,10 +108,11 @@ if ($DiffRange) {
 
 ## Changes under review — pasted by the launcher
 
-Range: ``$DiffRange``. Review the diff below directly; run git or open files
-only when you need more context, and read files as they are at the end of
-the range (``git show <end>:<path>``), not from the working tree, which may
-already hold later work.
+Range: ``$DiffRange`` (changes under ``.ai/`` left out — they are records, not
+code). Review the diff below directly; run git or open files only when you
+need more context, and read files as they are at the end of the range
+(``git show <end>:<path>``), not from the working tree, which may already
+hold later work.
 
 ### Commits
 
@@ -185,7 +189,12 @@ $result = Get-Content -LiteralPath $OutFile -Raw -Encoding UTF8
 # Known Windows sandbox failures (7 October 2026): Store pwsh cannot start
 # (CreateProcessAsUserW), and the unelevated sandbox refuses workspace-write
 # ("cannot enforce split writable root sets ... refusing to run unsandboxed").
-if ("$result`n$logText" -match 'CreateProcessAsUserW|UnsupportedOperation|refusing to run unsandboxed') {
+# A marker that already appears in the brief (e.g. when this launcher is
+# itself under review) is echoed in the log and the reply, so it is ignored
+# (false "degraded" seen 22 October 2026).
+$markers = @('CreateProcessAsUserW', 'UnsupportedOperation', 'refusing to run unsandboxed') |
+    Where-Object { $brief -notmatch [regex]::Escape($_) }
+if ($markers -and ("$result`n$logText" -match (($markers | ForEach-Object { [regex]::Escape($_) }) -join '|'))) {
     Write-Output "CODEX DEGRADED: Codex could not run shell commands (Windows sandbox). Treat the output as untrustworthy."
     Write-Output $usageLine
     Write-Output "Output: $OutFile"

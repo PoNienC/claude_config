@@ -37,34 +37,10 @@ Numbered tasks, each marked with its source (A, B or new) and its dependencies:
 
 - <anything either plan could not decide without you>
 
-## Detail
-
-### Agreements
-
-- <points both plans share>
-
-### Differences
-
-| Area | Plan A (Claude) | Plan B (Codex) | Recommended | Why |
-|---|---|---|---|---|
-| | | | | |
-
-### Task lists side by side
-
-| # | Plan A task | Plan B task | Notes |
-|---|---|---|---|
-| 1 | | | |
-
-### Testing compared
-
-| | Plan A | Plan B |
-|---|---|---|
-| What is tested | | |
-| How | | |
-| Gaps | | |
-
-### Risks only one plan found
+## Risks only one plan found
 
 | Risk | Found by | Severity | Mitigation |
 |---|---|---|---|
 | | | | |
+
+<!-- Whole file: at most 500 words outside the task list. The plans are linked above — do not restate them or lay them out side by side. -->

@@ -13,10 +13,13 @@ approach is correct, and do not look for it.
 
 ## Read first
 
-1. `AGENTS.md`
-2. `.ai/PROJECT.md`, `.ai/STATE.md`, `.ai/DECISIONS.md`
-3. `{{TASK_DIR}}/REQUEST.md`
-4. The relevant source code and tests — inspect the repository yourself.
+**Everything you need is pasted at the end of this brief** — the repo
+tree, `AGENTS.md`, `.ai/PROJECT.md`, `.ai/STATE.md`, `.ai/DECISIONS.md` and
+the relevant source and tests in full — and the request is in
+`{{TASK_DIR}}/REQUEST.md`. Plan from that text. Run a command only if a
+file you truly need is missing from the pack, then read only that file;
+do not explore the repository folder by folder. Say "not in the pack"
+rather than guessing.
 
 {{REVISION_NOTE}}
 
@@ -36,5 +39,6 @@ risk (low / medium / high).
 ## Rollback
 ## Open questions for the user
 
-Be specific to this repository: cite real file paths, functions and tests.
-British English. No preamble.
+Be specific to this repository: cite real file paths, functions and tests
+from the pack. Keep the whole plan under about 900 words. British English.
+No preamble.

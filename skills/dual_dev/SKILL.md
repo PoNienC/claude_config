@@ -36,13 +36,14 @@ commit message, no AI credit lines in commits.
 
   | Step | Default | With `--xhigh` |
   |---|---|---|
-  | Plan, plan review | `high` | `xhigh` |
+  | Plan, plan review | `medium` | `high` |
   | Execute, corrections | `high` | `xhigh` |
   | Audit round 1 | `medium` | `medium` |
   | Re-check (round 2, the last) | `low` | `low` |
 
   Strip `--xhigh` from the request. The user can change any row at Gate 2
-  or at any point; record the table in `ALLOCATION.md` and `TASKS.md`.
+  or at any point; record any change in `ALLOCATION.md` and `TASKS.md`
+  (the standing table lives in `templates/gate2_standing_options.md`).
 - **Approved plan from /dual_plan:** `--plan <path>` in the request (strip
   it) names a `PLAN.md` written by the `dual_plan` skill and approved by
   the user (its "Decision" line is filled). Phases 1 and 2 are then
@@ -228,29 +229,44 @@ handover the hook stops you; the user then types `/session_handover`.
 
 ## Phase 1 — Independent dual planning
 
-1. Fill `templates/codex_plan_brief.md` (`{{REVISION_NOTE}}` empty) →
-   `TD/codex/plan_brief.md`. Launch Codex, mode `plan`, in the background **now**.
-2. While Codex runs, write your own plan with the same sections as the
-   brief's output (Objective … Open questions). Read source as needed, but
-   do not read anything under `TD/codex/` except the brief.
-3. Save your draft to the session scratchpad (outside the repo) as
+Both planners work from ONE context pack that you build once (measured
+22 October 2026: a Codex plan from a pasted pack took 53 s and no shell
+commands; exploring the repo itself took 7–14 min and 13–26 commands).
+
+1. Build the pack — fast, not exhaustive: `git grep -l` for two to four
+   keywords from the request, plus the obvious modules, tests and
+   configs; at most 12 files. Then
+   `node "<skills>/dual_plan/scripts/build_context_pack.mjs" --repo "<repo root>" --out "<TD>/context_pack.md" --include <path> …`
+   (paths relative to the repo root; 160k-character cap).
+2. Fill `templates/codex_plan_brief.md` (`{{REVISION_NOTE}}` empty), append
+   the whole pack under a final heading `## Context pack (pasted)`, save
+   as `TD/codex/plan_brief.md`, and launch Codex, mode `plan`, plan
+   effort, in the background **now**.
+3. While Codex runs, write your own plan from the same pack, with the
+   same sections as the brief's output (Objective … Open questions),
+   under about 900 words. Read more source only where the pack is
+   missing something — note it. Do not read anything under `TD/codex/`
+   except the brief.
+4. Save your draft to the session scratchpad (outside the repo) as
    `plan_a_<request id>.md`. Codex cannot see it there, and it survives
    context compaction. Do not write it into the repo yet.
-4. Only after your draft is saved, wait for the Codex notification and read
+5. Only after your draft is saved, wait for the Codex notification and read
    `TD/codex/plan_out.md`.
-5. Write `TD/PLAN_A.md` (your draft unchanged, header line
+6. Write `TD/PLAN_A.md` (your draft unchanged, header line
    `Author: Claude Code`) and `TD/PLAN_B.md` (Codex output unchanged, header
-   line `Author: Codex, model <model from the launcher's OK line>, effort <effort>`).
+   line `Author: Codex, model <model from the launcher's OK line>, effort <effort>, <time>s`).
 
 Running both at once keeps independence: neither plan is seen by the other
-agent before both are saved.
+agent before both are saved. If Codex has not returned 10 minutes after
+launch, tell the user and offer to go on with your plan alone.
 
-### Light mode (`--solo_plan`) instead of steps 1–5
+### Light mode (`--solo_plan`) instead of steps 2–6
 
-1. Write your plan (same sections) to `TD/PLAN_A.md`, header line
-   `Author: Claude Code (light mode)`.
-2. Fill `templates/codex_plan_review_brief.md` → `TD/codex/plan_review_brief.md`;
-   launch Codex, mode `plan`, plan-review effort; wait.
+1. Write your plan (same sections, under about 900 words) from the pack
+   to `TD/PLAN_A.md`, header line `Author: Claude Code (light mode)`.
+2. Fill `templates/codex_plan_review_brief.md`, append the pack under
+   `## Context pack (pasted)` → `TD/codex/plan_review_brief.md`; launch
+   Codex, mode `plan`, plan-review effort; wait.
 3. Save Codex's output unchanged as `TD/PLAN_REVIEW.md`, header line
    `Author: Codex, model <model>, effort <effort>`.
 4. Evaluate every finding on its merits: ACCEPTED, PARTIALLY_ACCEPTED or
@@ -265,15 +281,18 @@ agent before both are saved.
 `COMPARISON.md`; link `GATE1_REVIEW.md` (open this first), `PLAN_A.md`
 and `PLAN_REVIEW.md`; ask **A** approve with the accepted changes ·
 **B** approve as written · **C** switch to full two-plan mode (run Phase 1
-steps 1–5 now) · **D** revise. Record the decision at the top of
-`GATE1_REVIEW.md`. Otherwise:
+steps 2–6 now, reusing the pack) · **D** revise. Record the decision at the top of
+`GATE1_REVIEW.md`. A small request (see "Combined gate" below) asks this
+together with Gate 2 instead. Otherwise:
 
 1. Write `TD/COMPARISON.md` from `templates/gate1_comparison.md`, every
-   section filled. It must stand on its own: the user decides from this
-   file alone — full differences table, both task lists side by side,
-   testing compared, one-plan-only risks, and the recommended hybrid as a
-   numbered task list with each task's source. Judge on merit, not
-   authorship.
+   section filled, **at most 500 words outside the task list**: the user
+   decides from this file alone — "In short", the key differences (at
+   most 8, each one line plus a line on which plan is better there), the
+   recommended hybrid as a numbered task list with each task's source,
+   open questions, and risks only one plan found. Do not restate the
+   plans or lay them out side by side — they are linked. Judge on merit,
+   not authorship.
 2. Chat — **review links first**, per "Review files and links": links to
    `COMPARISON.md` (open this first), `PLAN_A.md`, `PLAN_B.md`, then the
    absolute paths in one code block, then at most six bullets on the key
@@ -281,12 +300,39 @@ steps 1–5 now) · **D** revise. Record the decision at the top of
 3. Gate 1 with AskUserQuestion: **A** Claude plan · **B** Codex plan ·
    **C** Hybrid (as in `COMPARISON.md`, or the user's mix) · **D** Revise
    both. Put your recommendation first; each option's description names
-   the section of `COMPARISON.md` that explains it.
+   the section of `COMPARISON.md` that explains it. A small request
+   (see "Combined gate" below) asks this together with Gate 2 instead.
 4. **STOP** until answered. Record the decision at the top of
    `COMPARISON.md` (option, date, the user's words verbatim). On D: append
    the revision notes to `REQUEST.md`, then repeat Phase 1 as round 2
    (fresh Codex run, step `plan_r2`, `{{REVISION_NOTE}}` = the notes; keep
    round-1 files).
+
+### Combined gate for small requests (both planning modes)
+
+A request is small when the recommended plan has at most four tasks and
+none is High-risk (light mode included). Then the user takes both
+decisions in one stop:
+
+1. Write the Gate 1 file as above (`COMPARISON.md`, or `GATE1_REVIEW.md`
+   in light mode) with your recommended plan.
+2. Write `TD/PLAN_APPROVED.md` from that recommended plan, headed
+   `Provisional — pending the combined gate`, and `TD/ALLOCATION.md`
+   against it with the preset: Claude executes all, `per_block` with
+   overlap, `auto`, standing effort (Phase 3 steps 1–3; Codex execution
+   not available → option A only).
+3. Chat — review links first: the Gate 1 file (open this first),
+   `ALLOCATION.md`, the plans; then at most six bullets.
+4. One AskUserQuestion call: question 1 = the Gate 1 choice; question 2 =
+   "execution preset: confirm, or change (say what)". **STOP** until
+   answered.
+5. Record both decisions (Gate 1 file and `ALLOCATION.md`, option, date,
+   the user's words verbatim). Chosen plan = the recommended one → remove
+   `Provisional` from `PLAN_APPROVED.md`; preset confirmed → Gate 2 is
+   settled: go to Phase 3 step 7. Another plan or revision → rewrite
+   `PLAN_APPROVED.md` from the chosen plan (Phase 3 step 1); if its task
+   list differs, rewrite `ALLOCATION.md` and ask Gate 2 alone (Phase 3
+   steps 4–6). A changed preset is asked as Gate 2 question 4 only.
 
 ## Phase 3 — Approved plan and Gate 2
 
@@ -301,21 +347,24 @@ steps 1–5 now) · **D** revise. Record the decision at the top of
    well scoped, testable and interface-stable — not "a share of the work".
    Never split tightly coupled tasks across agents.
 3. Write `TD/ALLOCATION.md` from `templates/gate2_allocation.md`, every
-   section filled, **before** asking: the proposed split with a reason per
-   task, what each option means (who executes, who reviews, estimated
-   Codex calls), the **audit mode** (see Phase 4) with the blocks and the
-   audit points it creates, overlap (default on; which blocks could
-   overlap), the audit review option, effort and models per step, the
-   order of work up to the hand-off, the Git plan from the Git
-   conventions (branch, commit format, when commits happen under the
-   chosen audit mode, one close-out commit, push policy), cost so far and
-   the current limit %, and the risks of the split. When Codex execution
-   is not available, the file says so and shows option A only.
+   section filled, **before** asking — request-specific content only, at
+   most 300 words outside the tables: the proposed split with a reason
+   per task, the blocks and audit points the recommended mode creates,
+   your recommendation for mode, overlap and audit review (one line
+   each), effort and model, the order of work up to the hand-off, the
+   Git plan from the Git conventions (branch, commit format, push
+   policy), cost so far and the current limit %, and the risks of the
+   split. What the options mean in general is standing text in
+   `templates/gate2_standing_options.md` — fill `{{STANDING_OPTIONS_PATH}}`
+   with its absolute path; link it, never rewrite it.
+   When Codex execution is not available, the file says so and shows
+   option A only.
 4. Chat — **review links first**, per "Review files and links": links to
    `ALLOCATION.md` (open this first) and `PLAN_APPROVED.md`, then the
    absolute paths in one code block, then at most six bullets: who does
    which tasks, and your recommendation.
-5. Gate 2 with one AskUserQuestion call holding up to four questions:
+5. Skip this question when the combined gate (Phase 2) settled it. Otherwise
+   Gate 2 with one AskUserQuestion call holding up to four questions:
    (1) split — **A** Claude executes all (default) · **B** Split as in
    `ALLOCATION.md` · **C** Codex executes all · **D** Custom;
    (2) audit mode — `per_block` with overlap (default), `per_block`
