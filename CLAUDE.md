@@ -65,6 +65,11 @@
   draft, each reviews the other's draft, you merge. Give me only the final
   email plus at most four short bullets: highlights, what was merged, main
   review fix, anything to check.
+- Messages (Po, 22 October 2026): EVERY time I ask you to write, reply to or
+  refine a Slack, Teams or other chat message, run the skill
+  `message_dual_draft` — the same Claude + Codex flow as emails, and the final
+  message follows the Slack / Teams paste rule. Final message plus at most four
+  short bullets.
 
 ### Written documents — title first, detail later (Po, 15 October 2026)
 - Applies to every MD, HTML, Word or PDF file you write: reports, model
