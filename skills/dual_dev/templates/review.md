@@ -28,7 +28,8 @@
 |---|---|---|---|---|---|
 | B1 | T01-T03 | Codex (<model>, medium) | running | | |
 
-Status: running · awaiting your review · fixing · re-check running · complete.
+Status: running · awaiting your review · fixing · re-check running · complete (rows edited with `dd_status.mjs audit`).
+Close-out: <automatic once every row is complete, as you approved at the gate · or: I will ask you before closing out>.
 
 ## Your review notes
 

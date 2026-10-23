@@ -74,8 +74,21 @@ if ($outDir -and -not (Test-Path -LiteralPath $outDir)) {
 if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force }
 
 $brief = Get-Content -LiteralPath $BriefFile -Raw -Encoding UTF8
+# An audit brief must carry the acceptance criteria and handover as committed
+# (pasted by the coordinator); an unfilled placeholder means it does not.
+# (A placeholder standing alone on its line; the pasted text may quote them inline.)
+if ($Mode -eq 'audit' -and $brief -match '(?m)^\{\{(CRITERIA|HANDOVER)\}\}\s*$') {
+    throw "Audit brief still has an unfilled {{CRITERIA}} or {{HANDOVER}} placeholder: $BriefFile"
+}
 
 if ($DiffRange) {
+    # Pin the range to hashes, so the pasted header says exactly what was reviewed
+    # even if HEAD moves later.
+    if ($DiffRange -ne 'HEAD' -and $DiffRange -match '^(.+)\.\.(.+)$') {
+        $baseHash = (& git -C $Repo rev-parse --short $Matches[1] 2>$null)
+        $endHash = (& git -C $Repo rev-parse --short $Matches[2] 2>$null)
+        if ($baseHash -and $endHash) { $DiffRange = "$baseHash..$endHash" }
+    }
     # Read git output as UTF-8 so non-ASCII text in the diff survives.
     $savedConsoleEnc = [Console]::OutputEncoding
     [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
@@ -194,7 +207,20 @@ $result = Get-Content -LiteralPath $OutFile -Raw -Encoding UTF8
 # (false "degraded" seen 22 October 2026).
 $markers = @('CreateProcessAsUserW', 'UnsupportedOperation', 'refusing to run unsandboxed') |
     Where-Object { $brief -notmatch [regex]::Escape($_) }
-if ($markers -and ("$result`n$logText" -match (($markers | ForEach-Object { [regex]::Escape($_) }) -join '|'))) {
+# Degraded means the sandbox blocked Codex's commands, so judge by behaviour, not
+# by wording: markers count only when Codex ran commands and every one of them
+# failed (marker lines >= commands run). Codex echoing this launcher's own
+# comments while it reads the file (22-23 October 2026) leaves most commands
+# successful, so it no longer trips the check.
+$markerPattern = if ($markers) { ($markers | ForEach-Object { [regex]::Escape($_) }) -join '|' } else { $null }
+$markerHit = $false
+if ($markerPattern) {
+    $allLines = "$result`n$logText" -split "\r?\n"
+    $markerLines = @($allLines | Where-Object { $_ -match $markerPattern }).Count
+    $commandsRun = @($logLines | Where-Object { $_ -eq 'exec' }).Count
+    $markerHit = ($markerLines -gt 0) -and ($commandsRun -gt 0) -and ($markerLines -ge $commandsRun)
+}
+if ($markerHit) {
     Write-Output "CODEX DEGRADED: Codex could not run shell commands (Windows sandbox). Treat the output as untrustworthy."
     Write-Output $usageLine
     Write-Output "Output: $OutFile"

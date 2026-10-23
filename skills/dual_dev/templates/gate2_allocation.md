@@ -12,6 +12,7 @@
 - **Audit mode:** <per_block with overlap on / off · end · per_task> — <one-line reason>; <n> audit points, <n> Codex calls (est.)
 - **Audit review:** <auto / ask / ask_high> — <one-line reason>; expected stops for you: <n>
 - **Effort and model:** <as standing table, or the change>
+- **Close-out:** ask at the end (default) — or automatic, if you approve it here under the same conditions as the combined gate
 
 ## Proposed split
 

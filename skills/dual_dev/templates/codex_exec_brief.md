@@ -33,8 +33,10 @@ One section per task:
 ## T<nn> — <title>
 ### Summary
 ### Files changed
-### Tests run
-Command and result (pass / fail counts).
+### Tests and checks run
+One line per command — the task's tests, then the package checks named in
+`.ai/PROJECT.md` (lint, types): command, result (pass / fail counts), or
+the exact error if the sandbox blocked it.
 ### Finding resolutions
 Corrections round only. For each finding: F<n>, ACCEPTED /
 PARTIALLY_ACCEPTED / REJECTED / DEFERRED, one-line reason, what you changed.

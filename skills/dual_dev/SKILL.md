@@ -113,14 +113,33 @@ commit message, no AI credit lines in commits.
   both, and never two `execute` calls. The one exception: while Codex
   executes you may update the `.ai/` bookkeeping files (`TASKS.md`,
   `AUDIT_LOG.md`, `REVIEW.md`, saved reports), which Codex never
-  touches — but make no commit until it ends. Keep `TASKS.md` → "Running now"
-  current: add every background job when you launch it (Codex plan,
-  audit, re-check or execute call; audit subagent) with its start time
-  and output file, and remove it when it ends.
+  touches — but make no commit until it ends.
+- **Bookkeeping by script where it has a command, by hand elsewhere:**
+  `node "<skill dir>/scripts/dd_status.mjs" <command> "<TD>" …`
+  (`--dry-run` to preview) changes the task rows and the Hand-off,
+  Close-out, Running now and Codex-tokens header lines of `TASKS.md`,
+  and the audit table of `REVIEW.md`; it refuses a status move that
+  skips the documented order, repeats are no-ops:
+  `task <T01> <status> [--commit <hash>] [--fix <hash>]` ·
+  `running add <step> <output file>` / `running remove <step>` — at every
+  background launch and end (Codex plan, audit, re-check, execute;
+  audit subagent) · `audit <scope> <status> [--findings B/H/M/L/N] [--fix <hash>]` ·
+  `handoff <commit>` · `closeout automatic|ask` · `tokens <n>` ·
+  `mark <event>` — one timing line per boundary: request received, pack
+  built, Codex plan launched, own plan saved, Codex plan returned, gate
+  file written, gate asked, gate answered, each task started and
+  committed, each audit launched and returned, fixes committed,
+  hand-off sent, review stop asked and answered, close-out committed.
+  Before `TASKS.md` exists, `mark` and `running` write to `TD/TIMING.md`;
+  Phase 3 step 7 carries those lines over. Findings, prose and the
+  `REVIEW.md` close-out line stay hand-edited (targeted edits, never a
+  rewrite). Completion reports working time, user wait and Codex time
+  from the timing lines.
 - **Review files and links:** chat stays short; the full detail always
   goes into a Markdown file in TD **before** you ask the user anything
   (Gate 1 → `COMPARISON.md`, or `GATE1_REVIEW.md` in light mode;
-  Gate 2 → `ALLOCATION.md`; hand-off → `REVIEW.md`; completion →
+  Gate 2 → `ALLOCATION.md`; small requests → `GATE.md` for both;
+  hand-off → `REVIEW.md`; completion →
   `TASKS.md`, `AUDIT_LOG.md` and `REVIEW.md`). Never ask a gate question before its
   review file exists and is complete. Every message that refers to these
   files opens with them as clickable links, then one code block with
@@ -153,9 +172,10 @@ Used by a new session after a handover (see "Context guard" below).
 
 1. Find the repo root (Phase 0 step 1; `--repo` usually given). Read, in
    this order: the root `HANDOVER.md` if it names this request, then in
-   TD: `REQUEST.md`, the Gate 1 file, `PLAN_APPROVED.md`,
-   `ALLOCATION.md`, `TASKS.md`, `TASK_HANDOVER.md`, `AUDIT_LOG.md`, and
-   `REVIEW.md` if it exists.
+   TD: `REQUEST.md`, the gate file(s) (`GATE.md`, or `COMPARISON.md` /
+   `GATE1_REVIEW.md` and `ALLOCATION.md`), `PLAN_APPROVED.md`,
+   `TASKS.md` (including Close-out and Timing), `TASK_HANDOVER.md`,
+   `AUDIT_LOG.md`, and `REVIEW.md` if it exists.
 2. Check the repo matches the record: current branch, `git status`, and
    the last commits against `TASKS.md`. Report any mismatch and ask
    before going on.
@@ -205,8 +225,14 @@ handover the hook stops you; the user then types `/session_handover`.
    is allowed: note in `REQUEST.md` that the request branch stacks on it,
    and warn that its pull request will include the setup commit unless
    setup merges first.
-2. Read `AGENTS.md`, `.ai/PROJECT.md`, `.ai/STATE.md`, `.ai/DECISIONS.md`;
-   run `git status`, `git branch --show-current`, `git log --oneline -10`.
+2. Run `git status`, `git branch --show-current`, `git log --oneline -10`
+   first. Then build the context pack (Phase 1 step 1) **in the session
+   scratchpad** (`<scratch>/pack_<request id>.md`, moved into TD at step
+   6) — never into the repo before step 4 has seen the tree — and read
+   `AGENTS.md`, `.ai/PROJECT.md`, `.ai/STATE.md` and `.ai/DECISIONS.md`
+   from it: one read instead of four. The builder caps each of those
+   files at 12,000 characters and marks a cut file "truncated" — then
+   read the rest of that file directly; the rules in it bind.
    If `.ai/PROJECT.md` has no "Git conventions" section, read the
    project's branch, commit and push rules from `CLAUDE.md` (and
    `CONTRIBUTING.md`, `docs/`), use them, and tell the user to re-run
@@ -222,9 +248,11 @@ handover the hook stops you; the user then types `/session_handover`.
    restart.
 4. If the working tree is not clean, stop and ask: commit, stash or abort.
 5. Ask clarifying questions only if the request is genuinely ambiguous.
-6. Create TD and write `TD/REQUEST.md`: the request verbatim, confirmed
-   constraints and answers, effort, date (DD Month YYYY), starting branch
-   and commit hash.
+6. Create TD, move the pack in as `TD/context_pack.md`, and write
+   `TD/REQUEST.md`: the request verbatim, confirmed constraints and
+   answers, effort, date (DD Month YYYY), starting branch and commit
+   hash. Log `dd_status.mjs mark request received` now (it goes to
+   `TD/TIMING.md` until `TASKS.md` exists).
 7. Do not modify any source file.
 
 ## Phase 1 — Independent dual planning
@@ -233,11 +261,13 @@ Both planners work from ONE context pack that you build once (measured
 22 October 2026: a Codex plan from a pasted pack took 53 s and no shell
 commands; exploring the repo itself took 7–14 min and 13–26 commands).
 
-1. Build the pack — fast, not exhaustive: `git grep -l` for two to four
-   keywords from the request, plus the obvious modules, tests and
-   configs; at most 12 files. Then
-   `node "<skills>/dual_plan/scripts/build_context_pack.mjs" --repo "<repo root>" --out "<TD>/context_pack.md" --include <path> …`
-   (paths relative to the repo root; 160k-character cap).
+1. Build the pack (done in Phase 0 step 2; rebuild here only if the
+   clarifying answers changed the scope) — fast, not exhaustive:
+   `git grep -l` for two to four keywords from the request, plus the
+   obvious modules, tests and configs; at most 12 files. Then
+   `node "<skills>/dual_plan/scripts/build_context_pack.mjs" --repo "<repo root>" --out "<pack path>" --include <path> …`
+   (paths relative to the repo root; 160k-character cap; the pack lives
+   at `TD/context_pack.md` from Phase 0 step 6).
 2. Fill `templates/codex_plan_brief.md` (`{{REVISION_NOTE}}` empty), append
    the whole pack under a final heading `## Context pack (pasted)`, save
    as `TD/codex/plan_brief.md`, and launch Codex, mode `plan`, plan
@@ -311,28 +341,39 @@ together with Gate 2 instead. Otherwise:
 ### Combined gate for small requests (both planning modes)
 
 A request is small when the recommended plan has at most four tasks and
-none is High-risk (light mode included). Then the user takes both
-decisions in one stop:
+none is High-risk (light mode included). Then the user takes all the
+decisions in one stop, from ONE file:
 
-1. Write the Gate 1 file as above (`COMPARISON.md`, or `GATE1_REVIEW.md`
-   in light mode) with your recommended plan.
-2. Write `TD/PLAN_APPROVED.md` from that recommended plan, headed
-   `Provisional — pending the combined gate`, and `TD/ALLOCATION.md`
-   against it with the preset: Claude executes all, `per_block` with
-   overlap, `auto`, standing effort (Phase 3 steps 1–3; Codex execution
-   not available → option A only).
-3. Chat — review links first: the Gate 1 file (open this first),
-   `ALLOCATION.md`, the plans; then at most six bullets.
-4. One AskUserQuestion call: question 1 = the Gate 1 choice; question 2 =
-   "execution preset: confirm, or change (say what)". **STOP** until
+1. Write `TD/GATE.md` from `templates/gate_combined.md` instead of
+   `COMPARISON.md` / `GATE1_REVIEW.md` and `ALLOCATION.md`: "In short",
+   up to six differences (or, in light mode, your evaluation of Codex's
+   review findings), the recommended task list with each task's source,
+   the preset (Claude executes all, `per_task` with overlap, `auto`,
+   standing effort; Codex execution not available → Claude executes all
+   regardless), the close-out question, cost so far. At most 400 words
+   outside the task list. No `PLAN_APPROVED.md` yet.
+2. Chat — review links first: `GATE.md` (open this first), the plans;
+   then at most six bullets.
+3. One AskUserQuestion call: question 1 = the Gate 1 choice — full mode:
+   **A** Claude plan · **B** Codex plan · **C** hybrid · **D** revise
+   both; light mode: **A** approve with the accepted changes · **B**
+   approve as written · **C** switch to full two-plan mode (Phase 1
+   steps 2–6, then this gate again) · **D** revise; question 2 =
+   "execution preset: confirm, or change (say what)"; question 3 =
+   "close out automatically when the
+   review is `auto`, every audit is closed, no BLOCKER or HIGH stands,
+   the package checks pass and you sent no review notes at the hand-off"
+   (default yes; the push is a separate approval). **STOP** until
    answered.
-5. Record both decisions (Gate 1 file and `ALLOCATION.md`, option, date,
-   the user's words verbatim). Chosen plan = the recommended one → remove
-   `Provisional` from `PLAN_APPROVED.md`; preset confirmed → Gate 2 is
-   settled: go to Phase 3 step 7. Another plan or revision → rewrite
-   `PLAN_APPROVED.md` from the chosen plan (Phase 3 step 1); if its task
-   list differs, rewrite `ALLOCATION.md` and ask Gate 2 alone (Phase 3
-   steps 4–6). A changed preset is asked as Gate 2 question 4 only.
+4. Record the three decisions at the top of `GATE.md` (option, date, the
+   user's words verbatim) and in `TASKS.md` ("Close-out: automatic /
+   ask"). Write `TD/PLAN_APPROVED.md` from the chosen plan (Phase 3
+   step 1). Preset confirmed → Gate 2 is settled: go to Phase 3 step 7.
+   Plan revised (D), or light mode's C → the planning round named
+   above, then this gate again.
+   Preset changed, or another plan whose task list differs from the
+   recommended one → write `ALLOCATION.md` for it and ask Gate 2 alone
+   (Phase 3 steps 3–6).
 
 ## Phase 3 — Approved plan and Gate 2
 
@@ -376,8 +417,12 @@ decisions in one stop:
 6. **STOP** until answered. Record the decision at the top of
    `ALLOCATION.md` (option, date, the user's words verbatim; for D, the
    final per-task split).
-7. Write `TD/TASKS.md` from `templates/tasks_matrix.md`, and start
-   `TD/TASK_HANDOVER.md` and `TD/AUDIT_LOG.md` (from `templates/audit_log.md`).
+7. Write `TD/TASKS.md` from `templates/tasks_matrix.md` (`{{CLOSEOUT}}` =
+   `automatic` only if approved at the gate, else `ask`; copy the
+   "Running now" line and the Timing lines from `TD/TIMING.md` into it,
+   then delete `TIMING.md`), and start `TD/TASK_HANDOVER.md` and
+   `TD/AUDIT_LOG.md` (from `templates/audit_log.md`). From here on
+   `dd_status.mjs` writes to `TASKS.md` (Fixed conventions → Bookkeeping).
 8. `git switch -c <branch per Git conventions>`. The `.ai/` planning files
    ride along in the T01 commit.
 
@@ -387,8 +432,8 @@ decisions in one stop:
 
 | Mode | Audits happen | Speed | Trade-off |
 |---|---|---|---|
-| `per_task` | after every task | slowest | smallest diffs; a problem is caught before later tasks build on it |
-| `per_block` (default) | once per **block** — a run of consecutive tasks with the same executor | faster | one finding may touch several tasks of the block |
+| `per_task` | after every task; with overlap on (the small-request preset) the next task starts while the audit runs | smallest diffs; with overlap, the last audit covers only the last task | one Codex call per task; a finding on an earlier task is fixed at the next commit boundary |
+| `per_block` (default for larger requests) | once per **block** — a run of consecutive tasks with the same executor | faster | one finding may touch several tasks of the block |
 | `end` | after all tasks, at the hand-off: every run of consecutive tasks by one executor is audited by the other agent, all at once (one Codex audit when Claude did everything) | fastest | a late finding can force rework across many tasks |
 
 In every mode the audits run in the background (see "Background audits
@@ -402,12 +447,15 @@ after six tasks. Name blocks B1, B2, … and list them in `ALLOCATION.md`
 and `TASKS.md`.
 
 Before each task: its dependencies are done and the tree holds no
-unrelated changes. Under `per_block` with overlap, check whole blocks:
-start a block (or a Codex `execute` call for it) only if none of its
-tasks depends on a scope whose audit, fixes or re-check are still open;
-otherwise wait. Checking the whole block up front means a block never
-stops half-way waiting for fixes that themselves wait for the block to
-end (`end` accepts that risk by design). Keep the `TASKS.md` status current
+unrelated changes. Under `per_task` with overlap: start the next task
+only if it does not depend on a task whose audit, fixes or re-check are
+still open; otherwise wait for that audit. Under `per_block` with
+overlap, check whole blocks: start a block (or a Codex `execute` call
+for it) only if none of its tasks depends on a scope whose audit, fixes
+or re-check are still open; otherwise wait. Checking the whole block up
+front means a block never stops half-way waiting for fixes that
+themselves wait for the block to end (`end` accepts that risk by
+design). Keep the `TASKS.md` status current
 (Pending → In progress → Done, audit pending → In audit → Awaiting your
 review → Corrections → Complete).
 
@@ -450,18 +498,26 @@ When the review stops for you:
 
 ### Execute
 
-- **Claude task:** implement only this task; run its tests; append to
-  `TASK_HANDOVER.md` (summary, files changed, tests and results, known
-  gaps); commit now (see Commit) and mark "Done, audit pending". Every
-  mode commits first and audits the commit range.
+- **Claude task:** implement only this task; run its tests **and the
+  package checks** (the lint and type commands `.ai/PROJECT.md` names —
+  e.g. `ruff check src/ tests/`, `mypy --strict src/<package>`; if it
+  names none, say so); append to `TASK_HANDOVER.md` (summary, files
+  changed, a "Checks" line per command: command, revision, result, or
+  why it does not apply; known gaps); commit now (see Commit) and mark
+  "Done, audit pending". A check is reused from an earlier task only
+  while the code it covers and the environment are unchanged. Every
+  mode commits first and audits the commit range. (Both audits in the
+  23 October 2026 test flagged a missing package-wide mypy result —
+  recording it costs seconds, a fix round costs over a minute.)
 - **Codex tasks:** `per_task` → one Codex `execute` call per task. Other
   modes → **one call per block** of consecutive Codex tasks: fill
   `templates/codex_exec_brief.md` with all the block's task IDs in order
   (`{{CORRECTIONS}}` empty). After the call: put Codex's handover into
   `TASK_HANDOVER.md`; check `git status` and the diff yourself; run the
-  tests (the sandbox may have blocked some) and record your command and
-  result under the block in `TASK_HANDOVER.md`; commit the block (one
-  commit for the block) and mark its tasks "Done, audit pending".
+  tests and the package checks (the sandbox may have blocked some) and
+  record each command, revision and result under the block in
+  `TASK_HANDOVER.md`; commit the block (one commit for the block) and
+  mark its tasks "Done, audit pending".
 - Then launch the scope's audit if the mode calls for one now, and go on
   per "Background audits and overlap".
 
@@ -474,7 +530,14 @@ commit of the scope. Write scope, range and both hashes at the top of the
 
 - **Scope executed by Claude → Codex audits:** fill
   `templates/codex_audit_brief.md` (`{{TASK_IDS}}`, `{{AUDIT_RANGE}}`,
-  round 1, `{{ROUND_NOTE}}` empty) → launch Codex in the background, mode
+  round 1, `{{ROUND_NOTE}}` empty; `{{CRITERIA}}` and `{{HANDOVER}}` =
+  the scope's sections of `PLAN_APPROVED.md` and `TASK_HANDOVER.md` as
+  committed at `<end>` — `git -C "<repo root>" show <end>:<TD path>/PLAN_APPROVED.md`,
+  same for the handover — so the audit never reads a live file; give
+  `-DiffRange` as two full hashes, never `HEAD~1..HEAD`: the launcher
+  resolves and prints the hashes it pasted, and refuses an audit brief
+  whose `{{CRITERIA}}` or `{{HANDOVER}}` is still unfilled) →
+  launch Codex in the background, mode
   `audit`, audit effort, with
   `-DiffRange <base>..<end>` (`--diff-range` on macOS) so the launcher
   pastes the commits and diff into the brief. When it returns, copy the
@@ -561,24 +624,24 @@ commit of the scope. Write scope, range and both hashes at the top of the
 ### Background audits and overlap
 
 - When a scope is committed and its audit launched, carry on with the
-  next block **if** the mode is `per_block`, overlap is on (the
-  default), and the block passes the whole-block check under "Before
-  each task". Otherwise wait for the audits it depends on; the chat
-  stays free for the user meanwhile.
-- `per_task`: every task waits for its own audit, except the last one.
-  `end`: all audits start at the hand-off. In every mode the last
-  scope's audit runs during the hand-off (Phase 5).
+  next task or block **if** overlap is on and the dependency check under
+  "Before each task" passes (`per_task`: the next task; `per_block`: the
+  whole next block). Otherwise wait for the audits it depends on; the
+  chat stays free for the user meanwhile.
+- `per_task` without overlap: every task waits for its own audit, except
+  the last one. `end`: all audits start at the hand-off. In every mode
+  the last scope's audit runs during the hand-off (Phase 5).
 - Audits may run alongside each other and alongside one writer (you, or
   one Codex `execute` call). Two `execute` calls never run at once, and
   you never edit while a Codex `execute` runs — except the `.ai/`
   bookkeeping files (`TASKS.md`, `AUDIT_LOG.md`, `REVIEW.md`, saved
   reports), which Codex never touches; make no commit until it ends.
 - When an audit returns with findings: the review question (if any) can
-  go to the user straight away, but fixes wait until the block in
-  progress is finished and committed, so every scope's range holds only
-  its own executor's commits. Then commit the fixes before the next
-  block. If a fix changes something a later task relied on, re-run that
-  task's tests and note it in `AUDIT_LOG.md`.
+  go to the user straight away, but fixes wait until the task or block
+  in progress is finished and committed, so every scope's range holds
+  only its own executor's commits. Then commit the fixes before the next
+  task or block. If a fix changes something a later task relied on,
+  re-run that task's tests and note it in `AUDIT_LOG.md`.
 
 ### Limits
 
@@ -655,7 +718,10 @@ audit now.
    combined stop). Fixes are new commits on top of the hand-off commit;
    after each, tell the user in one line (commit, findings fixed, files
    touched) — they may be trying the result. Keep the audit table in
-   `REVIEW.md` current with targeted edits, never a full rewrite.
+   `REVIEW.md` current with targeted edits, never a full rewrite. While
+   the last audit runs, draft the Phase 6 close-out now: the `.ai/STATE.md`
+   and `.ai/DECISIONS.md` updates (uncommitted) and the "Changes since
+   the hand-off" section — so completion is a commit, not a writing job.
 5. Record each review note from chat in `REVIEW.md` → "Your review
    notes" with the task it became or "no action". A change the user asks
    for becomes a new task (`T<next>` in `PLAN_APPROVED.md` and
@@ -663,12 +729,16 @@ audit now.
    any fix in progress, commit it, and audit it in the background like
    any other scope.
 6. When every audit and re-check is closed, send one message: the
-   commits since the hand-off (one line each), and ask whether the user
-   has review notes or wants to close out. Go to Phase 6 only on their
-   go-ahead. If no audit is open at the hand-off, ask this in the
-   hand-off message itself.
+   commits since the hand-off (one line each). **Close-out approved at
+   the combined gate** and its conditions hold (review `auto`, every
+   audit closed, no BLOCKER or HIGH standing, package checks passed, no
+   review notes received): say "closing out as approved" in that message
+   and go to Phase 6 without waiting. Otherwise ask whether the user has
+   review notes or wants to close out, and go to Phase 6 only on their
+   go-ahead. If no audit is open at the hand-off, fold this into the
+   hand-off message.
 
-## Phase 6 — Completion (every audit closed, the user said close out)
+## Phase 6 — Completion (every audit closed; the user said close out, or approved it in advance)
 
 Review notes that arrive after the close-out go back to Phase 5 step 5;
 then repeat this phase (one more close-out commit).
@@ -678,13 +748,16 @@ then repeat this phase (one more close-out commit).
 2. Review the whole branch: `git diff <start commit>..HEAD --stat`, then
    skim the full diff. Fill `REVIEW.md` → "Changes since the hand-off"
    (`git diff <hand-off commit>..HEAD --stat`, one line per commit).
-3. Update `.ai/STATE.md`; add material decisions to `.ai/DECISIONS.md`.
-   Commit, subject `<request id> close-out` in the project's format
-   (e.g. `chore: <request id> close-out`).
+3. Finish the `.ai/STATE.md` and `.ai/DECISIONS.md` updates drafted in
+   Phase 5 (check them against what changed since). Commit, subject
+   `<request id> close-out` in the project's format (e.g.
+   `chore: <request id> close-out`).
 4. Chat: what changed since the hand-off, findings accepted/rejected per
    agent, remaining risks (including deferred findings), total Codex
-   tokens for this request and the current limit % used, branch name,
-   links to `REVIEW.md`, `TASKS.md` and `AUDIT_LOG.md`.
+   tokens for this request and the current limit % used, the request's
+   time from `TASKS.md` → Timing (total; your working time; the user's
+   waiting time at the gates and stops; Codex calls and seconds), branch
+   name, links to `REVIEW.md`, `TASKS.md` and `AUDIT_LOG.md`.
 5. Ask before any push, pull request or merge.
 6. Before a pull request: run `gh repo view <owner>/<repo>` with the
    active GitHub CLI account. If it fails and another logged-in account

@@ -18,13 +18,24 @@ Claude Code executed {{TASK_IDS}}. Review them independently and critically.
   results (in the handover) are authoritative; a missing test or a
   doubtful result is a finding.
 
-## Context
+## Context (as committed at the end of the range — pasted, immutable)
 
-- Task specs and acceptance criteria: `{{TASK_DIR}}/PLAN_APPROVED.md`, sections {{TASK_IDS}}.
-- Executor's handover: `{{TASK_DIR}}/TASK_HANDOVER.md`, sections {{TASK_IDS}}.
+### Acceptance criteria — `{{TASK_DIR}}/PLAN_APPROVED.md`, sections {{TASK_IDS}}
+
+~~~markdown
+{{CRITERIA}}
+~~~
+
+### Executor's handover — `{{TASK_DIR}}/TASK_HANDOVER.md`, sections {{TASK_IDS}}
+
+~~~markdown
+{{HANDOVER}}
+~~~
+
 - Check each task against its own acceptance criteria, and check that the
   tasks fit together.
-- Project conventions: `AGENTS.md`, `.ai/PROJECT.md`.
+- Project conventions: `AGENTS.md`, `.ai/PROJECT.md` (read with
+  `git show <end>:<path>`; the working tree may hold later work).
 
 {{ROUND_NOTE}}
 

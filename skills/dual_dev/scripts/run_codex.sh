@@ -76,6 +76,21 @@ log="$out.log"
 mkdir -p "$(dirname "$out")"
 rm -f "$out"
 
+# An audit brief must carry the acceptance criteria and handover as committed
+# (pasted by the coordinator); an unfilled placeholder means it does not.
+# (A placeholder standing alone on its line; the pasted text may quote them inline.)
+if [ "$mode" = "audit" ] && grep -Eq '^\{\{(CRITERIA|HANDOVER)\}\}[[:space:]]*$' "$brief"; then
+    echo "Audit brief still has an unfilled {{CRITERIA}} or {{HANDOVER}} placeholder: $brief" >&2; exit 64
+fi
+# Pin a committed range to hashes, so the pasted header says exactly what was
+# reviewed even if HEAD moves later.
+if [ -n "$diff_range" ] && [ "$diff_range" != "HEAD" ]; then
+    base_ref=${diff_range%%..*}; end_ref=${diff_range##*..}
+    base_hash=$(git -C "$repo" rev-parse --short "$base_ref" 2>/dev/null)
+    end_hash=$(git -C "$repo" rev-parse --short "$end_ref" 2>/dev/null)
+    [ -n "$base_hash" ] && [ -n "$end_hash" ] && diff_range="$base_hash..$end_hash"
+fi
+
 # The text sent to Codex: the brief, plus the pasted changes for audits.
 send=$(mktemp "${TMPDIR:-/tmp}/run_codex_brief.XXXXXX")
 trap 'rm -f "$send"' EXIT
@@ -157,7 +172,16 @@ for m in sandbox_apply CreateProcessAsUserW UnsupportedOperation 'refusing to ru
     grep -Fq "$m" "$send" 2>/dev/null && continue
     pattern="${pattern:+$pattern|}$m"
 done
-if [ -n "$pattern" ] && grep -Eq "$pattern" "$out" "$log"; then
+# Degraded means the sandbox blocked Codex's commands, so judge by behaviour, not
+# by wording: markers count only when Codex ran commands and every one of them
+# failed (marker lines >= commands run). Codex echoing the launchers' own
+# comments while it reads them leaves most commands successful.
+marker_lines=0; commands_run=0
+if [ -n "$pattern" ]; then
+    marker_lines=$(cat "$out" "$log" 2>/dev/null | grep -Ec "$pattern")
+    commands_run=$(tr -d '\r' < "$log" | grep -cx 'exec')
+fi
+if [ "$marker_lines" -gt 0 ] && [ "$commands_run" -gt 0 ] && [ "$marker_lines" -ge "$commands_run" ]; then
     echo "CODEX DEGRADED: Codex could not run shell commands (sandbox). Treat the output as untrustworthy."
     echo "$usage_line"
     echo "Output: $out"
